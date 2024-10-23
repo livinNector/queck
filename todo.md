@@ -4,16 +4,22 @@
 - [x] Adding Question Types to question
 - [x] Added answer Types
 - [x] Boolean type
-- [x] Description type
-  
+- [x] Description type (no answer)
+- [ ] Match type
+  ```
+  - A --- Apple
+  - B --- Ball
+  - C --- Cat
+  - D --- Dog
+  ```
 ## Render
 - [x] Render format markdown
 - [x] HTML fast render [hljs and katex includes]
 - [x] Render code inline with pygments (compat render)
-- [ ] rendered svg for equations using node and mathjax (compat render)
-- [ ] pure html with `css-inline`
+- [ ] Rendered svg for equations using node and mathjax (compat render)
+- [ ] Pure html with `css-inline`
 - [ ] Render plugins
-- [ ] render question and answer text as jinja template
+- [ ] Render question and answer text as jinja template
 
 
 # CLI
