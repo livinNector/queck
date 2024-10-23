@@ -1,0 +1,108 @@
+@page {
+  size: A4;
+  margin: 0.5in;
+}
+.no-break {
+  page-break-inside: avoid;
+}
+
+body {
+  font-family: sans;
+  max-width: 768px; /* from bootstrap*/
+  padding: 20px;
+  margin: auto;
+}
+h1,
+h2 {
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #ccc;
+}
+h3 {
+  text-decoration: underline;
+}
+table {
+  margin: 1em 0;
+  border-collapse: collapse;
+  width: 100%;
+  overflow-x: auto;
+  display: block;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+table caption {
+  margin-bottom: 0.75em;
+}
+
+tbody {
+  margin-top: 0.5em;
+  border-top: thin solid #000;
+  border-bottom: thin solid #000;
+}
+
+th,
+td {
+  border: thin solid #000;
+  padding: 0.5em 0.5em 0.25em 0.5em;
+}
+
+code {
+  color: red;
+  font-family: monospace;
+  font-weight: bold;
+  padding: 0.2rem;
+  background: #f5f5f5;
+  border-radius: 5px;
+}
+
+.contains-task-list {
+  li {
+    list-style: none;
+  }
+}
+
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+
+  margin: 0;
+  padding: 0;
+  display: inline;
+
+  font: inherit;
+  color: currentColor;
+  width: 1em;
+  height: 1em;
+  border: thin solid #aaa;
+  border-radius: 0.2em;
+}
+
+input[type="checkbox"]:checked {
+  background: green;
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  clip-path: polygon(
+    10% 50%,
+    20% 60%,
+    40% 80%,
+    80% 20%,
+    70% 10%,
+    40% 60%,
+    20% 40%
+  );
+
+  width: 1em;
+  height: 1em;
+  background: white;
+  position: absolute;
+}
+
+input[type="checkbox"]:focus {
+  outline: max(2px, 0.15em) solid #ccc;
+  outline-offset: max(2px, 0.15em);
+}
+
+input[type="checkbox"]:disabled {
+  pointer-events: none;
+}

@@ -1,0 +1,70 @@
+{% macro render_question(question, index, level=2) %}
+
+{{"#"*level}} Question {{ index }} [{{ question.type | upper }}] {%if question.marks %}({{question.marks}} marks){%endif%}
+
+{{ question.question }}  
+{% if question.type in ['mcq','msq'] -%}
+{%- for choice in question.answer.root %}
+  - [{{ 'x' if choice.is_correct else ' '  }}] {{"<!---->" if not choice.text.split('\n')[0].strip() else ""-}}
+      {{ choice.text | indent(4) }}
+      {%- if choice.feedback %}  
+      _{{ choice.feedback }}_
+      {%- endif -%}
+{%- endfor -%}
+{%- elif question.answer_type == "num_int" %}
+
+**Answer:** ${{ question.answer }}$
+{%- elif question.answer_type == "num_range" %}
+
+**Answer:** ${{ question.answer.low }}$ to ${{ question.answer.high }}$
+{%- elif question.answer_type == "num_tol" %}
+
+**Answer:** ${{ question.answer.value }}$ ± ${{ question.answer.tol }}$
+{%- elif question.answer_type == "sa" %}
+
+**Answer:** {{ question.answer }}
+{%- endif -%}
+{%- if question.feedback %}
+
+**Feedback**  
+{{ question.feedback }}
+{%- endif -%}
+{% endmacro -%}
+
+{%block body%}
+# {{ quiz.title }} {%if quiz.marks %}({{quiz.marks}} marks){%endif%}
+
+## Overview
+| Question Type       | Count |
+|---------------------|-------|
+| Single Correct (MCQ) | {{ quiz.questions|selectattr('type', "equalto", 'mcq') | list | length }} |
+| Multiple Correct (MSQ) | {{ quiz.questions|selectattr('type', "equalto", 'msq') | list | length }} | |
+| Numeric (NAT) | {{ quiz.questions|selectattr('type', "equalto", 'nat') | list | length }}  |
+| Short Answer (SA)    | {{ quiz.questions|selectattr('type', "equalto", 'sa') | list | length }} | |
+| Comprehension (COMP) | {{ quiz.questions|selectattr('type', "equalto", 'comp') | list | length }} | |
+
+---
+
+{% set question_count = 0 -%}
+{%- for item in quiz.questions -%}
+{%- if item.type == "comp" -%}
+{%- set index = loop.index %}
+{{'<div class="no-break">' if format=='html' else ''}}
+
+## Question {{index}} [COMP] {%if item.marks %}({{item.marks}} marks){%endif%}
+
+### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
+{{ item.common_data }}
+{{"</div>" if format=='html' else ''}}
+{%- for question in item.questions -%}
+{{'<div class="no-break">' if format=='html' else ''}}
+{{ render_question(question, index+0.1*loop.index, level=3) }}
+{{"</div>" if format=='html' else ''}}
+{%- endfor -%}
+{%- else %}
+{{'<div class="no-break">' if format=='html' else ''}}
+{{ render_question(item, loop.index) }}
+{{"</div>" if format=='html' else ''}}
+{% endif -%}
+{%- endfor -%}
+{%endblock body%}
