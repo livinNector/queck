@@ -54,9 +54,16 @@ code {
   border-radius: 5px;
 }
 
+blockquote {
+  border-left: solid thick #ccc;
+  padding-left: 1em;
+}
+
 .contains-task-list {
   li {
     list-style: none;
+    margin-bottom: 0.5em;
+    position: relative;
   }
 }
 
@@ -64,16 +71,12 @@ input[type="checkbox"] {
   -webkit-appearance: none;
   appearance: none;
 
-  margin: 0;
-  padding: 0;
-  display: inline;
-
-  font: inherit;
-  color: currentColor;
-  width: 1em;
-  height: 1em;
+  width: 1.15em;
+  height: 1.15em;
   border: thin solid #aaa;
   border-radius: 0.2em;
+  position: absolute;
+  left: -2em;
 }
 
 input[type="checkbox"]:checked {
@@ -92,8 +95,8 @@ input[type="checkbox"]::before {
     20% 40%
   );
 
-  width: 1em;
-  height: 1em;
+  width: 1.15em;
+  height: 1.15em;
   background: white;
   position: absolute;
 }
