@@ -5,7 +5,6 @@ from pydantic import (
     computed_field,
     model_validator,
     TypeAdapter,
-    ValidationError,
 )
 from typing import ClassVar, Literal
 import re
@@ -87,16 +86,16 @@ class NumTolerance(BaseModel):
 
 
 AnswerType = Literal[
-    "single_correct", "multiple_correct", "num_int", "num_range", "num_tol", "sa"
+    "single_correct", "multiple_correct", "num_int", "num_range", "num_tol", "sa", "none"
 ]
-QuestionType = Literal["mcq", "msq", "nat", "sa"]
+QuestionType = Literal["mcq", "msq", "nat", "sa","desc"]
 
 
 class Question(BaseModel):
-    question: str
-    answer: Choices | int | NumRange | NumTolerance | str = Field(
-        union_mode="left_to_right"
-    )
+    text: str
+    answer: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
+        union_mode="left_to_right",default=None
+    ) 
     feedback: str | None = ""
     marks: int | None = 0
 
@@ -108,6 +107,8 @@ class Question(BaseModel):
                 return "single_correct"
             case Choices():
                 return "multiple_correct"
+            case bool():
+                return "true_false"
             case int():
                 return "num_int"
             case NumRange():
@@ -116,23 +117,27 @@ class Question(BaseModel):
                 return "num_tol"
             case str():
                 return "sa"
+            case None:
+                return 'none'
+
 
     @computed_field
     @property
     def type(self) -> QuestionType:
         match self.answer:
-            case Choices(n_correct=1):
-                return "mcq"
+            case Choices(n_correct=1) | bool():
+                return "mcq" # multiple choice question
             case Choices():
-                return "msq"
+                return "msq" # multiple select question
             case int() | NumRange() | NumTolerance():
-                return "nat"
+                return "nat" # numerical answer type
             case str():
-                return "sa"
-
+                return "sa" # short answer
+            case None:
+                return 'desc' # description
 
 class Comprehension(BaseModel):
-    common_data: str
+    text: str
     questions: list[Question]
     type: Literal["comp"] = "comp"
     

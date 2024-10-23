@@ -2,8 +2,8 @@
 
 {{"#"*level}} Question {{ index }} [{{ question.type | upper }}] {%if question.marks %}({{question.marks}} marks){%endif%}
 
-{{ question.question }}  
-{% if question.type in ['mcq','msq'] -%}
+{{ question.text }}  
+{% if question.answer_type in ['single_correct','multiple_correct'] -%}
 {%- for choice in question.answer.root %}
   - [{{ 'x' if choice.is_correct else ' '  }}] {{"<!---->" if not choice.text.split('\n')[0].strip() else ""-}}
       {{ choice.text | indent(4) }}
@@ -11,6 +11,10 @@
       _{{ choice.feedback }}_
       {%- endif -%}
 {%- endfor -%}
+
+{%- elif question.answer_type == "true_false" %}
+- [{{ 'x' if question.answer else ' '  }}] True
+- [{{ 'x' if not question.answer else ' '  }}] False
 {%- elif question.answer_type == "num_int" %}
 
 **Answer:** ${{ question.answer }}$
@@ -54,7 +58,7 @@
 ## Question {{index}} [COMP] {%if item.marks %}({{item.marks}} marks){%endif%}
 
 ### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
-{{ item.common_data }}
+{{ item.text }}
 {{"</div>" if format=='html' else ''}}
 {%- for question in item.questions -%}
 {{'<div class="no-break">' if format=='html' else ''}}
