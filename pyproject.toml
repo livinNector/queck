@@ -1,0 +1,38 @@
+
+[project]
+name = "queck"
+version = "0.0.1"
+description = "A quiz parser that validates quiz YAML files and exports them to HTML"
+readme = "README.md"
+authors = [
+    {name = "Livin Nector", email = "livinnector2001@gmail.com"},
+]
+license = {text = "MIT"}
+requires-python = "<4.0,>=3.10"
+dependencies = [
+    "pydantic<3.0,>=2.0",
+    "pyyaml<7.0,>=6.0",
+    "jinja2<4.0,>=3.1",
+    "mdit-py-plugins>=0.4.2",
+    "linkify-it-py>=2.0.3",
+    "watchfiles>=0.24.0",
+    "css-inline>=0.14.1",
+    "fire>=0.7.0",
+    "pygments>=2.18.0",
+    "nodeenv>=1.9.1",
+    "asyncio>=3.4.3",
+    "websockets>=13.1",
+]
+
+[project.scripts]
+queck = "queck.cli:main"
+queck-live-server = "queck.live_server:start_live_server"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "ipykernel>=6.29.5",
+]
