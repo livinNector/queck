@@ -1,0 +1,102 @@
+title: Markdown checker
+questions:
+  - text: |
+      ## Headers
+      # H1 Header
+      ## H2 Header
+      ### H3 Header 
+      #### H4 Header
+      ##### H5 Header
+      ###### H6 Header
+
+      ## Text Styles
+      **Bold Text**
+
+      *Italic Text*
+
+      ***Bold and Italic Text***
+
+      ~~Strikethrough Text~~
+
+      ## Blockquotes
+      > This is a blockquote.
+      > > This is a nested one within that.
+
+      ## Lists
+      ### Unordered List
+      - Item 1
+        - Subitem 1.1
+        - Subitem 1.2
+      - Item 2
+
+      ### Ordered List
+      1. First item
+      2. Second item
+      3. Third item
+        1. Subitem 3.1
+        2. Subitem 3.2
+
+      ## Links
+      [GitHub](https://github.com)
+
+      ## Images
+      ![GitHub Logo](https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png)
+
+      ## Code
+      ### Inline Code
+      Here is some `inline code`.
+
+      ### Code Block
+
+      ```python
+      def hello_world():
+          print("Hello, world!")
+      ```
+
+      ## Tables
+
+      ### Simple Table
+
+      | Header 1 | Header 2 | Header 3 |
+      | -------- | -------- | -------- |
+      | Row 1    | Data 1   | Data 2   |
+      | Row 2    | Data 3   | Data 4   |
+
+      ### Aligned Table
+
+      | Left Align | Center Align | Right Align |
+      | :--------- | :----------: | ----------: |
+      | This       |      is      |     a table |
+      | with       |  different   |  alignments |
+      | in each    |    column    |         row |
+
+      ## Horizontal Rule
+      ---
+      ## Task List
+      - [x] Task 1
+      - [ ] Task 2
+      - [ ] Task 3
+
+      ## Math Expressions
+      ### Inline Math
+      Inline math expression: $E = mc^2$.
+
+      ### Display Math
+      $$
+      \int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+      $$
+
+
+      ## HTML
+      ### HTML Tags
+      <p>This is a paragraph written in HTML.</p>
+
+      <a href="https://www.github.com">GitHub link using HTML</a>
+
+      ## Nested Lists
+      1. First item
+        - Subitem 1
+          - Sub-subitem 1
+      2. Second item
+        1. Subitem 2.1
+        2. Subitem 2.2
