@@ -37,6 +37,27 @@
   <style>
     {% include 'style.css' %}
   </style>
+  {# For Live reload #}
+  <script>
+    var ws = new WebSocket( // eslint-disable-line
+      'ws://' + window.location.hostname + ':8765/ws/live-server'); // Adjust port if needed
+
+    ws.onopen = e => {
+      console.log('Connected to Live Server');
+    };
+
+    ws.onmessage = function (msg) {
+      console.log(msg.data); // Log the message
+      if (msg.data === 'reload') {
+        window.location.reload(); // Reload the page on receiving the signal
+      }
+    };
+
+    ws.onclose = function (e) {
+      console.error('Connection to Live Server closed.');
+      console.warn('Please restart Live Server and reload this page.');
+    };
+  </script>
 </head>
 
 <body>
