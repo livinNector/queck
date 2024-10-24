@@ -61,7 +61,7 @@ class NumRange(BaseModel):
     @classmethod
     def parse(cls, value):
         if isinstance(value, str):
-            high, low = sorted(map(NumAdapter.validate_python, value.split("..")))
+            low, high = sorted(map(NumAdapter.validate_python, value.split("..")))
             return {"high": high, "low": low}
         elif isinstance(value, dict):
             return value
