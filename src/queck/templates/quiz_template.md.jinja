@@ -11,21 +11,16 @@
       _{{ choice.feedback }}_
       {%- endif -%}
 {%- endfor -%}
-
 {%- elif question.answer_type == "true_false" %}
 - [{{ 'x' if question.answer else ' '  }}] True
 - [{{ 'x' if not question.answer else ' '  }}] False
 {%- elif question.answer_type == "num_int" %}
-
 **Answer:** ${{ question.answer }}$
 {%- elif question.answer_type == "num_range" %}
-
 **Answer:** ${{ question.answer.low }}$ to ${{ question.answer.high }}$
 {%- elif question.answer_type == "num_tol" %}
-
 **Answer:** ${{ question.answer.value }}$ ± ${{ question.answer.tol }}$
 {%- elif question.answer_type == "sa" %}
-
 **Answer:** {{ question.answer }}
 {%- endif -%}
 {%- if question.feedback %}
@@ -52,23 +47,24 @@
 {% set question_count = 0 -%}
 {%- for item in quiz.questions -%}
 {%- if item.type == "comp" -%}
-{%- set index = loop.index %}
-{{'<div class="no-break">' if format=='html' else ''}}
+{%- set index = loop.index -%}
+{{-'<div class="no-break">' if format=='html' else ''}}
 
 ## Question {{index}} [COMP] {%if item.marks %}({{item.marks}} marks){%endif%}
 
 ### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
+
 {{ item.text }}
-{{"</div>" if format=='html' else ''}}
+{{-"</div>" if format=='html' else ''-}}
 {%- for question in item.questions -%}
-{{'<div class="no-break">' if format=='html' else ''}}
+{{-'<div class="no-break">' if format=='html' else ''-}}
 {{ render_question(question, index+0.1*loop.index, level=3) }}
-{{"</div>" if format=='html' else ''}}
+{{-"</div>" if format=='html' else ''-}}
 {%- endfor -%}
-{%- else %}
-{{'<div class="no-break">' if format=='html' else ''}}
+{%- else -%}
+{{-'<div class="no-break">' if format=='html' else ''-}}
 {{ render_question(item, loop.index) }}
-{{"</div>" if format=='html' else ''}}
-{% endif -%}
+{{-"</div>" if format=='html' else ''-}}
+{%- endif -%}
 {%- endfor -%}
 {%endblock body%}
