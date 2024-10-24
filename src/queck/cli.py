@@ -101,7 +101,8 @@ class Queck:
                 format=format,
                 render_mode=render_mode,
             )
-            start_http_server(output_folder)
+            if format == "html":
+                start_http_server(output_folder)
             asyncio.run(
                 self._watch_and_export(yaml_files, output_folder, format, render_mode)
             )
@@ -142,7 +143,8 @@ class Queck:
         """
         print("Watching for changes...")
         print(yaml_files)
-        ws_server_task = asyncio.create_task(websocket_server())
+        if format=='html':
+            ws_server_task = asyncio.create_task(websocket_server())
 
         async for changes in awatch(*yaml_files):
             # On detecting a file change, re-export the YAML files
@@ -158,7 +160,8 @@ class Queck:
                 format=format,
                 render_mode=render_mode,
             )
-            await send_reload_signal()
+            if format == 'html':
+                await send_reload_signal()
         await ws_server_task
 
 def main():
