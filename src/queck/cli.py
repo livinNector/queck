@@ -8,7 +8,7 @@ from watchfiles import awatch
 
 from .quiz_models import Quiz
 from .renderers import render_quiz
-from .live_server import start_http_server, websocket_server, send_reload_signal
+from .live_server import LiveServer
 
 
 # Function to load and validate the quiz YAML file using Pydantic
@@ -70,7 +70,7 @@ class Queck:
     def __init__(self):
         # Function to convert quiz to JSON format
         self.tojson = lambda quiz: load_quiz(quiz).model_dump_json(indent=2)
-
+        
     def export(
         self,
         *yaml_files,
@@ -101,8 +101,6 @@ class Queck:
                 format=format,
                 render_mode=render_mode,
             )
-            if format == "html":
-                start_http_server(output_folder)
             asyncio.run(
                 self._watch_and_export(yaml_files, output_folder, format, render_mode)
             )
@@ -144,11 +142,12 @@ class Queck:
         print("Watching for changes...")
         print(yaml_files)
         if format=='html':
-            ws_server_task = asyncio.create_task(websocket_server())
-
+            self.live_server = LiveServer(output_folder)
+            self.live_server.start()
+    
         async for changes in awatch(*yaml_files):
             # On detecting a file change, re-export the YAML files
-            files_changed = [yaml_file for change, yaml_file in changes]
+            files_changed = [yaml_file for _, yaml_file in changes]
             print(
                 "Dected changes:",
                 *(f"  - {file_name}" for file_name in files_changed),
@@ -161,8 +160,7 @@ class Queck:
                 render_mode=render_mode,
             )
             if format == 'html':
-                await send_reload_signal()
-        await ws_server_task
+                await self.live_server.send_reload_signal()
 
 def main():
     # Fire the CLI with the Queck class

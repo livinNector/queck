@@ -2,42 +2,49 @@ import subprocess
 import websockets
 import asyncio
 
-PORT = 8080
-WS_PORT = 8765
+class LiveServer:
+    def __init__(self, directory, port=8080,ws_port=8765):
+        
+        # WebSocket handler for live reloads
+        self.clients = set()
+        self.directory = directory
+        self.port = port
+        self.ws_port = ws_port
 
+    async def websocket_handler(self,websocket, path):
+        # Register client
+        self.clients.add(websocket)
+        print(f"New WebSocket connection. Total connections: {len(self.clients)}")
+        try:
+            async for message in websocket:
+                print(message)
+        except websockets.ConnectionClosed:
+            print("WebSocket connection closed")
+        finally:
+            # Unregister client
+            self.clients.remove(websocket)
 
-# WebSocket handler for live reloads
-clients = set()
+    # Function to send a reload signal to all connected clients
+    async def send_reload_signal(self):
+        if self.clients:
+            print("Sending reload signal to clients...")
+            await asyncio.gather(*[client.send("reload") for client in self.clients])
 
+    # Start WebSocket server
+    async def start_websocket_server(self):
+        async with websockets.serve(self.websocket_handler, "localhost", self.ws_port):
+            print(f"WebSocket server running on ws://localhost:{self.ws_port}")
+            await asyncio.Future()  # Keep server running
 
-async def websocket_handler(websocket, path):
-    # Register client
-    clients.add(websocket)
-    print(f"New WebSocket connection. Total connections: {len(clients)}")
-    try:
-        async for message in websocket:
-            # Handle incoming messages if needed
-            pass
-    except websockets.ConnectionClosed:
-        print("WebSocket connection closed")
-    finally:
-        # Unregister client
-        clients.remove(websocket)
+    # Main function to start both HTTP and WebSocket servers
+    def start_http_server(self):
+        self.http_server_process = subprocess.Popen(["python", "-m","http.server","-d", self.directory, str(self.port)])
 
-
-# Function to send a reload signal to all connected clients
-async def send_reload_signal():
-    if clients:
-        print("Sending reload signal to clients...")
-        await asyncio.gather(*[client.send("reload") for client in clients])
-
-
-# Start WebSocket server
-async def websocket_server():
-    async with websockets.serve(websocket_handler, "localhost", WS_PORT):
-        print(f"WebSocket server running on ws://localhost:{WS_PORT}")
-        await asyncio.Future()  # Keep server running
-
-# Main function to start both HTTP and WebSocket servers
-def start_http_server(directory):
-    subprocess.Popen(["python", "-m","http.server","-d", directory, str(PORT)])
+    def start(self):
+        self.start_http_server()
+        self.ws_server_task = asyncio.create_task(self.start_websocket_server())
+        
+    def close(self):
+        self.http_server_process.terminate()
+        self.ws_server_task.cancel()
+        self.clients = set()
