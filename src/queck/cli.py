@@ -70,7 +70,7 @@ class Queck:
     def __init__(self):
         # Function to convert quiz to JSON format
         self.tojson = lambda quiz: load_quiz(quiz).model_dump_json(indent=2)
-        
+
     def export(
         self,
         *yaml_files,
@@ -141,10 +141,10 @@ class Queck:
         """
         print("Watching for changes...")
         print(yaml_files)
-        if format=='html':
+        if format == "html":
             self.live_server = LiveServer(output_folder)
             self.live_server.start()
-    
+
         async for changes in awatch(*yaml_files):
             # On detecting a file change, re-export the YAML files
             files_changed = [yaml_file for _, yaml_file in changes]
@@ -159,8 +159,9 @@ class Queck:
                 format=format,
                 render_mode=render_mode,
             )
-            if format == 'html':
+            if format == "html":
                 await self.live_server.send_reload_signal()
+
 
 def main():
     # Fire the CLI with the Queck class

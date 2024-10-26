@@ -86,16 +86,22 @@ class NumTolerance(BaseModel):
 
 
 AnswerType = Literal[
-    "single_correct", "multiple_correct", "num_int", "num_range", "num_tol", "sa", "none"
+    "single_correct",
+    "multiple_correct",
+    "num_int",
+    "num_range",
+    "num_tol",
+    "sa",
+    "none",
 ]
-QuestionType = Literal["mcq", "msq", "nat", "sa","desc"]
+QuestionType = Literal["mcq", "msq", "nat", "sa", "desc"]
 
 
 class Question(BaseModel):
     text: str
     answer: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
-        union_mode="left_to_right",default=None
-    ) 
+        union_mode="left_to_right", default=None
+    )
     feedback: str | None = ""
     marks: int | None = 0
 
@@ -118,32 +124,32 @@ class Question(BaseModel):
             case str():
                 return "sa"
             case None:
-                return 'none'
-
+                return "none"
 
     @computed_field
     @property
     def type(self) -> QuestionType:
         match self.answer:
             case Choices(n_correct=1) | bool():
-                return "mcq" # multiple choice question
+                return "mcq"  # multiple choice question
             case Choices():
-                return "msq" # multiple select question
+                return "msq"  # multiple select question
             case int() | NumRange() | NumTolerance():
-                return "nat" # numerical answer type
+                return "nat"  # numerical answer type
             case str():
-                return "sa" # short answer
+                return "sa"  # short answer
             case None:
-                return 'desc' # description
+                return "desc"  # description
+
 
 class Comprehension(BaseModel):
     text: str
     questions: list[Question]
     type: Literal["comp"] = "comp"
-    
+
     @computed_field
     @property
-    def marks(self)->int|None:
+    def marks(self) -> int | None:
         return sum(question.marks for question in self.questions)
 
 
@@ -153,5 +159,5 @@ class Quiz(BaseModel):
 
     @computed_field
     @property
-    def marks(self)->int|None:
+    def marks(self) -> int | None:
         return sum(question.marks for question in self.questions)

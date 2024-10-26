@@ -2,16 +2,17 @@ import subprocess
 import websockets
 import asyncio
 
+
 class LiveServer:
-    def __init__(self, directory, port=8080,ws_port=8765):
-        
+    def __init__(self, directory, port=8080, ws_port=8765):
+
         # WebSocket handler for live reloads
         self.clients = set()
         self.directory = directory
         self.port = port
         self.ws_port = ws_port
 
-    async def websocket_handler(self,websocket, path):
+    async def websocket_handler(self, websocket, path):
         # Register client
         self.clients.add(websocket)
         print(f"New WebSocket connection. Total connections: {len(self.clients)}")
@@ -38,12 +39,14 @@ class LiveServer:
 
     # Main function to start both HTTP and WebSocket servers
     def start_http_server(self):
-        self.http_server_process = subprocess.Popen(["python", "-m","http.server","-d", self.directory, str(self.port)])
+        self.http_server_process = subprocess.Popen(
+            ["python", "-m", "http.server", "-d", self.directory, str(self.port)]
+        )
 
     def start(self):
         self.start_http_server()
         self.ws_server_task = asyncio.create_task(self.start_websocket_server())
-        
+
     def close(self):
         self.http_server_process.terminate()
         self.ws_server_task.cancel()
