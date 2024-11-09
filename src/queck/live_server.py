@@ -1,12 +1,13 @@
-import subprocess
-import websockets
 import asyncio
+import subprocess
+
+import websockets
 
 
 class LiveServer:
-    def __init__(self, directory, port=8080, ws_port=8765):
+    """Live server to host a directory with live reloads using websockets."""
 
-        # WebSocket handler for live reloads
+    def __init__(self, directory, port=8080, ws_port=8765):
         self.clients = set()
         self.directory = directory
         self.port = port
