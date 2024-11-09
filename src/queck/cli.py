@@ -1,112 +1,54 @@
-import os
-import subprocess
-import fire
-import yaml
 import asyncio
+import os
 from typing import Literal
+
+import fire
 from watchfiles import awatch
 
-from .quiz_models import Quiz
-from .renderers import render_quiz
 from .live_server import LiveServer
-
-
-# Function to load and validate the quiz YAML file using Pydantic
-def load_quiz(yaml_file):
-    """
-    Loads and validates the quiz YAML file.
-
-    Args:
-        yaml_file (str): Path to the YAML file.
-
-    Returns:
-        Quiz: Validated Quiz object if successful.
-
-    Raises:
-        ValidationError: if validation is not successfull
-    """
-    with open(yaml_file, "r") as f:
-        return Quiz.model_validate(yaml.safe_load(f))
-
-
-# Function to export the quiz into the required format (HTML or Markdown)
-def export_file(
-    yaml_file,
-    output_file=None,
-    format: Literal["html", "md"] = "html",
-    render_mode: Literal["fast", "compat"] = "fast",
-):
-    """
-    Exports the quiz file to the required format.
-
-    Args:
-        yaml_file (str): Path to the quiz YAML file.
-        format (str): Output format (html or md). Defaults to 'html'.
-        render_mode (str): Rendering mode - 'fast' for KaTeX and HLJS, 'compat' for MathJax and Pygments.
-        output_file (str): Output file path. Defaults to None.
-
-    Returns:
-        None
-    """
-    try:
-        quiz = load_quiz(yaml_file)
-    except:
-        raise f"{yaml_file} is not valid Quiz YAML. Please fix the errors."
-
-    # Write the rendered output to a file
-    with open(output_file, "w") as f:
-        f.write(render_quiz(quiz, format, render_mode))
-
-    print(f"Quiz successfully exported to {output_file}")
+from .quiz_models import Quiz
 
 
 class Queck:
-    """
-    A CLI tool for Quiz Validation and Exporting.
+    """A CLI tool for Quiz Validation and Exporting.
 
     Provides options to validate and export quizzes defined in YAML format.
     """
 
-    def __init__(self):
-        # Function to convert quiz to JSON format
-        self.tojson = lambda quiz: load_quiz(quiz).model_dump_json(indent=2)
-
     def export(
         self,
-        *yaml_files,
-        format: Literal["html", "md"] = "html",
+        *queck_files,
+        format: Literal["html", "md", "json"] = "html",
         output_folder="export",
         render_mode: Literal["fast", "compat"] = "fast",
         watch=False,
     ):
-        """
-        Export YAML files into the specified format with optional live watching.
+        """Export queck (YAML) files into the specified .
 
         Args:
-            yaml_files (list): List of YAML files to be exported.
-            format (str): Output format (html or md). Defaults to 'html'.
-            output_folder (str): Output folder path. Defaults to 'exports'.
-            render_mode (str): Rendering mode - 'fast' or 'compat'.
-            watch (bool): Enable watch mode to monitor changes in files. Defaults to False.
+            queck_files : List of queck (YAML) files to be exported.
+            format : Output format
+            output_folder : Output folder path
+            render_mode : Rendering mode
+            watch : Enable watch mode to monitor changes in files
 
         Returns:
             None
         """
-
         if watch:
             # Run the file watcher asynchronously to monitor file changes
             self.export(
-                *yaml_files,
+                *queck_files,
                 output_folder=output_folder,
                 format=format,
                 render_mode=render_mode,
             )
             asyncio.run(
-                self._watch_and_export(yaml_files, output_folder, format, render_mode)
+                self._watch_and_export(queck_files, output_folder, format, render_mode)
             )
         else:
             # Export files without watching for changes
-            for yaml_file in yaml_files:
+            for yaml_file in queck_files:
                 try:
                     print(f"Rendering {yaml_file}...")
                     current_dir = os.path.abspath(os.curdir)
@@ -117,35 +59,38 @@ class Queck:
                     output_file = os.path.splitext(output_file)[0] + f".{format}"
                     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-                    export_file(
-                        yaml_file,
-                        format=format,
-                        output_file=output_file,
-                        render_mode=render_mode,
-                    )
+                    try:
+                        Quiz.from_queck(yaml_file).export(
+                            output_file=output_file,
+                            format=format,
+                            render_mode=render_mode,
+                        )
+                    except ValueError:
+                        raise ValueError(
+                            f"{yaml_file} is not valid queck file. Please fix the errors."
+                        )
                 except Exception as e:
                     print(e)
 
-    async def _watch_and_export(self, yaml_files, output_folder, format, render_mode):
-        """
-        Watches for changes in the specified files and re-exports them upon changes.
+    async def _watch_and_export(self, queck_files, output_folder, format, render_mode):
+        """Watches for changes in the specified files and re-exports them upon changes.
 
         Args:
-            yaml_files (list): List of YAML files to be monitored and exported.
-            format (str): Output format (html or md).
-            output_file (str): Output file path.
-            render_mode (str): Rendering mode - 'fast' or 'compat'.
+            queck_files: List of YAML files to be monitored and exported.
+            format: Output format (html or md).
+            output_folder: Output folder path
+            render_mode: Rendering mode - 'fast' or 'compat'.
 
         Returns:
             None
         """
         print("Watching for changes...")
-        print(yaml_files)
+        print(queck_files)
         if format == "html":
             self.live_server = LiveServer(output_folder)
             self.live_server.start()
 
-        async for changes in awatch(*yaml_files):
+        async for changes in awatch(*queck_files):
             # On detecting a file change, re-export the YAML files
             files_changed = [yaml_file for _, yaml_file in changes]
             print(
@@ -165,7 +110,7 @@ class Queck:
 
 def main():
     # Fire the CLI with the Queck class
-    fire.Fire(Queck)
+    fire.Fire(Queck())
 
 
 if __name__ == "__main__":

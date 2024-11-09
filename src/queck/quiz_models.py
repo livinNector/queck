@@ -1,13 +1,18 @@
+import re
+from typing import ClassVar, Literal
+
+import yaml
 from pydantic import (
     BaseModel,
     Field,
     RootModel,
+    TypeAdapter,
     computed_field,
     model_validator,
-    TypeAdapter,
 )
-from typing import ClassVar, Literal
-import re
+
+from .render_utils import templates
+from .utils import write_file
 
 
 class Choice(BaseModel):
@@ -92,6 +97,7 @@ AnswerType = Literal[
     "num_range",
     "num_tol",
     "sa",
+    "true_false",
     "none",
 ]
 QuestionType = Literal["mcq", "msq", "nat", "sa", "desc"]
@@ -161,3 +167,58 @@ class Quiz(BaseModel):
     @property
     def marks(self) -> int | None:
         return sum(question.marks for question in self.questions)
+
+    @classmethod
+    def from_queck(cls, yaml_file):
+        """Loads and validates the quiz YAML file.
+
+        Args:
+            yaml_file (str): Path to the YAML file.
+
+        Returns:
+            Quiz: Validated Quiz object if successful.
+
+        Raises:
+            ValidationError: if validation is not successfull
+        """
+        with open(yaml_file, "r") as f:
+            return cls.model_validate(yaml.safe_load(f))
+
+    def as_html(self, render_mode: Literal["fast", "compat"] = "fast"):
+        assert render_mode in [
+            "fast",
+            "compat",
+        ], 'render_mode must be one of "fast" or "compat"'
+        return templates[render_mode].render(quiz=self)
+
+    def as_md(self):
+        return templates["md"].render(quiz=self)
+
+    def to_html(self, file_name, render_mode: Literal["fast", "compat"] = "fast"):
+        write_file(file_name, self.as_html(render_mode), "html")
+
+    def to_md(self, file_name):
+        write_file(file_name, self.as_md(), "md")
+
+    def to_json(self, file_name):
+        write_file(file_name, self.model_dump_json(indent=2), "json")
+
+    def to_queck(self, file_name):
+        # TODO: implememt this with a render template
+        ...
+
+    def export(
+        self,
+        output_file=None,
+        format: Literal["html", "md", "json"] = "html",
+        render_mode: Literal["fast", "compat"] = "fast",
+    ):
+        """Exports the quiz file to the required format."""
+        match format:
+            case "html":
+                self.to_html(output_file, render_mode=render_mode)
+            case "md":
+                self.to_md(output_file)
+            case "json":
+                self.to_json(output_file)
+        print(f"Quiz successfully exported to {output_file}")

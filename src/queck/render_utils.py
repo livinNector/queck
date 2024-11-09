@@ -1,20 +1,11 @@
-from markdown_it import MarkdownIt
-from mdit_py_plugins.tasklists import tasklists_plugin
-from mdit_py_plugins.container import container_plugin
-
-from pygments import highlight
-from pygments.lexers import get_lexer_by_name
-from pygments.formatters import HtmlFormatter
-
+import css_inline
 from jinja2 import Environment, PackageLoader, select_autoescape
-
-# Initialize the Jinja2 environment with package loader and autoescaping
-package_env = Environment(
-    loader=PackageLoader("queck", "templates"), autoescape=select_autoescape()
-)
-
-from typing import Literal
-from .quiz_models import Quiz
+from markdown_it import MarkdownIt
+from mdit_py_plugins.container import container_plugin
+from mdit_py_plugins.tasklists import tasklists_plugin
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name
 
 
 def pygments_plugin(md):
@@ -40,40 +31,39 @@ def pygments_plugin(md):
     md.add_render_rule("fence", render_code_block, fmt="html")
 
 
-fast = (
-    MarkdownIt("gfm-like").use(tasklists_plugin).use(container_plugin, name="no-break")
+def css_inline_plugin(md):
+    render = md.render
+    md.render = lambda x: css_inline.inline(render(x))
+
+
+def get_base_md():
+    return (
+        MarkdownIt("gfm-like")
+        .use(tasklists_plugin, enabled=True)
+        .use(container_plugin, name="no-break")
+    )
+
+
+md = {}
+md["fast"] = get_base_md().render
+md["compat"] = get_base_md().use(pygments_plugin).use(css_inline_plugin).render
+
+
+def get_template_env(**filters):
+    env = Environment(
+        loader=PackageLoader("queck", "templates"), autoescape=select_autoescape()
+    )
+    env.filters["chr"] = chr
+    env.filters.update(filters)
+    return env
+
+
+templates = {}
+templates["md"] = get_template_env().get_template("quiz_template.md.jinja")
+templates["queck"] = get_template_env().get_template("queck_template.yaml.jinja")
+templates["fast"] = get_template_env(md=md["fast"]).get_template(
+    "quiz_template.html.jinja", globals={"render_mode": "fast"}
 )
-
-compat = (
-    MarkdownIt("gfm-like")
-    .use(tasklists_plugin)
-    .use(container_plugin, name="no-break")
-    .use(pygments_plugin)
+templates["compat"] = get_template_env(md=md["compat"]).get_template(
+    "quiz_template.html.jinja"
 )
-
-
-def render_quiz(
-    quiz: Quiz,
-    format: Literal["html", "md"] = "html",
-    render_mode: Literal["fast", "compat"] = "fast",
-):
-    # Set the rendering mode
-    match render_mode:
-        case "fast":
-            package_env.filters["md"] = fast.render
-        case "compat":
-            package_env.filters["md"] = compat.render
-        case _:
-            raise ValueError(f'render_mode must be one of "fast" or "compat" ')
-
-    # Choose the template based on the format (html or md)
-    match format:
-        case "html":
-            template = package_env.get_template("quiz_template.html.jinja")
-        case "md":
-            template = package_env.get_template("quiz_template.md.jinja")
-        case _:
-            raise ValueError(f'format must be one of "html" or "md"')
-
-    # Render the template with the quiz data
-    return template.render(quiz=quiz, format=format, render_mode=render_mode)
