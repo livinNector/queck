@@ -1,5 +1,4 @@
 {% macro render_question(question, index, level=2) %}
-
 {{"#"*level}} Question {{ index }} [{{ question.type | upper }}] {%if question.marks %}({{question.marks}} marks){%endif%}
 
 {{ question.text }}  
@@ -22,12 +21,11 @@
 **Answer:** ${{ question.answer.value }}$ ± ${{ question.answer.tol }}$
 {%- elif question.answer_type == "sa" %}
 **Answer:** {{ question.answer }}
-{%- endif -%}
-{%- if question.feedback %}
-
+{%- endif %}
+{%if question.feedback %}
 **Feedback**  
 {{ question.feedback }}
-{%- endif -%}
+{% endif -%}
 {% endmacro -%}
 
 {%block body%}

@@ -23,7 +23,8 @@ h3 {
 table {
   margin: 1em 0;
   border-collapse: collapse;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   overflow-x: auto;
   display: block;
   font-variant-numeric: lining-nums tabular-nums;
@@ -60,52 +61,11 @@ blockquote {
 }
 
 .contains-task-list {
-  li {
-    list-style: none;
-    margin-bottom: 0.5em;
-    position: relative;
-  }
+  list-style: none;
+  margin-bottom: 0.5em;
 }
 
-input[type="checkbox"] {
-  -webkit-appearance: none;
-  appearance: none;
-
-  width: 1.15em;
-  height: 1.15em;
-  border: thin solid #aaa;
-  border-radius: 0.2em;
-  position: absolute;
-  left: -2em;
-}
-
-input[type="checkbox"]:checked {
-  background: green;
-}
-
-input[type="checkbox"]::before {
-  content: "";
-  clip-path: polygon(
-    10% 50%,
-    20% 60%,
-    40% 80%,
-    80% 20%,
-    70% 10%,
-    40% 60%,
-    20% 40%
-  );
-
-  width: 1.15em;
-  height: 1.15em;
-  background: white;
-  position: absolute;
-}
-
-input[type="checkbox"]:focus {
-  outline: max(2px, 0.15em) solid #ccc;
-  outline-offset: max(2px, 0.15em);
-}
-
-input[type="checkbox"]:disabled {
+.contains-task-list input[type="checkbox"] {
+  accent-color: green;
   pointer-events: none;
 }
