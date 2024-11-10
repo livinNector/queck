@@ -184,6 +184,21 @@ class Quiz(BaseModel):
         with open(yaml_file, "r") as f:
             return cls.model_validate(yaml.safe_load(f))
 
+    @classmethod
+    def from_queck_str(cls, queck_str:str):
+        """Loads and validates the Queck YAML string.
+
+        Args:
+            queck_str(str): the Queck YAML string.
+
+        Returns:
+            Quiz: Validated Quiz object if successful.
+
+        Raises:
+            ValidationError: if validation is not successfull
+        """
+        return cls.model_validate(yaml.safe_load(queck_str))
+
     def as_html(self, render_mode: Literal["fast", "compat"] = "fast"):
         assert render_mode in [
             "fast",
