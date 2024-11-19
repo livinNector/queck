@@ -3,11 +3,12 @@ questions:
   # Multiple choice questions with individiual feedback
   - text: What is the capital of **France**?
     answer:
-      - (x) Paris // correct   
+      - (x) Paris // correct
       - ( ) London // London is the capital of Britian
       - ( ) Berlin // Berlin is the capital of Germany
       - ( ) Madrid // Madrid is the capital of Spain
     marks: 2
+
   # Multiple Select question with global feedback
   - text: Which of the following are programming languages?
     answer:
@@ -17,13 +18,15 @@ questions:
       - ( ) CSS
     feedback: HTML and CSS are markup and styling language respectively
     marks: 2
+
   # numerical or short answer type
   - text: What is $5 + 3$?
-    answer: 8 
+    answer: 8
     marks: 1
+
   - text: |
       State whether the below statement is **True** or **False**. 
-  
+
       "_This statement is False._"  
 
       Hint: you will never get this one correct 😜.
@@ -46,13 +49,13 @@ questions:
     marks: 3
 
   - text: |
-        what is the output of the below `python` program?  
-        ```python
-        for i in range(2):
-          print('hi') 
-        ```
+      what is the output of the below `python` program?  
+      ```python
+      for i in range(2):
+        print('hi') 
+      ```
     answer:
-      - | 
+      - |
         ( )
 
         ```
@@ -60,8 +63,8 @@ questions:
         hi
         hi
         ```
-        
-      - | 
+
+      - |
         (x)
         ```
         hi
@@ -79,15 +82,14 @@ questions:
 
       - ( ) The code has syntax errors
     marks: 2
-      
-  
+
   # Comprehension question
   - text: >
       The following questions are about the solar system.
       Read the below passage before answering.
 
 
-      The solar system consists of the Sun and the objects that orbit around it, 
+      The solar system consists of the Sun and the objects that orbit around it,
       including eight planets, moons, and other celestial bodies. 
       Mars, the fourth planet from the Sun, is known as the Red Planet 
       due to its reddish appearance caused by iron oxide (rust) 
@@ -110,4 +112,3 @@ questions:
       - text: The other name for iron oxide is _____.
         answer: rust
         marks: 1
-
