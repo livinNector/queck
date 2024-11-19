@@ -20,7 +20,12 @@ def pygments_plugin(md):
 
         formatter = HtmlFormatter(
             noclasses=True,
-            cssstyles="padding:10px; border-radius:5px;border: thin solid #ddd;margin-bottom:.5em;",
+            cssstyles="""
+            padding:10px;
+            border-radius:5px;
+            border: thin solid #ddd;
+            margin-bottom:.5em;
+            """,
             prestyles="padding:0px; margin:0px;",
         )
 
