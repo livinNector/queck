@@ -1,4 +1,4 @@
-# 🌟 Queck: A Format for Quiz Authoring
+# 🌟 Queck: An YAML based Format for Quiz Authoring
 
 **Queck** is a simple and structured format for authoring quizzes based on **YAML** and **Markdown**. It provides a flexible schema for different types of questions, supporting both basic and complex quiz designs. Queck can export quizzes into **HTML** or **Markdown**, with options for live watching and automatic re-exporting upon file changes.
 
