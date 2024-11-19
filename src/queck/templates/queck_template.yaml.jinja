@@ -1,0 +1,50 @@
+{%- macro render_text(text,indent_level=4)%}
+{%- if text.split("\n") | map('length') | select("greaterthan",79) | first -%}>
+{{ text | replace('\n\n','\n\n\n') | wordwrap |indent(indent_level,first=True) }}
+{%- elif "\n" in text -%}|
+{{ text | indent(indent_level,first=True) }}
+{%- else -%}
+{{ text }}
+{%- endif -%}
+{%- endmacro-%}
+{%- macro render_choice(choice) -%}
+({{ 'x' if choice.is_correct else ' ' }}) {{ choice.text }} {%- if choice.feedback %} // {{ choice.feedback }} {%- endif %}
+{%- endmacro-%}
+{%- macro render_question(question) %}
+- text: {{render_text(question.text)}}
+  {%- if question.marks %} 
+  marks: {{ question.marks }}
+  {%- endif %} 
+  answer: 
+  {%- if question.answer_type in ['single_correct','multiple_correct'] -%}
+    {%- for choice in question.answer.root %}
+    - {{render_text(render_choice(choice),indent_level=6)}}
+    {%- endfor -%}
+  {%- elif question.answer_type in ["num_int","sa"] %} {{ question.answer }}
+  {%- elif question.answer_type == "true_false" %} {{ question.answer | lower }}
+  {%- elif question.answer_type == "num_range" %} {{ question.answer.low }}..{{ question.answer.high }}
+  {%- elif question.answer_type == "num_tol" %} {{ question.answer.value }}|{{ question.answer.tol }} 
+  {%- endif %}
+  {%- if question.feedback %}
+  feedback: {{ question.feedback }}
+  {%- endif %}
+{% endmacro %}
+{%- block body -%}
+title: {{quiz.title}}
+questions:
+{%- filter indent(2) -%}
+{%- for item in quiz.questions -%}
+  {%-if item.type == "comp" %}
+- text: {{render_text(item.text)}}
+  questions:
+    {%- filter indent(4) -%}
+      {%- for question in item.questions -%}
+      {{ render_question(question) }}
+      {%- endfor -%}
+    {% endfilter %}
+  {%- else -%}
+    {{ render_question(item) }}
+  {%- endif %}
+{%- endfor -%}
+{%- endfilter -%}
+{% endblock body %}
