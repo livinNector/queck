@@ -4,7 +4,7 @@
 {{ question.text }}  
 {% if question.answer_type in ['single_correct','multiple_correct'] -%}
 {%- for choice in question.answer.root %}
-  - [{{ 'x' if choice.is_correct else ' '  }}] {{"<!---->" if not choice.text.split('\n')[0].strip() else ""-}}
+  - [{{ 'x' if choice.is_correct else ' '  }}] {{"<!---->\n    " if choice.text.startswith("```") else ""-}}
       {{ choice.text | indent(4) }}
       {%- if choice.feedback %}  
       _{{ choice.feedback }}_
@@ -53,16 +53,16 @@
 ### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
 
 {{ item.text }}
-{{-"</div>" if format=='html' else ''-}}
+{{-"\n</div>\n" if format=='html' else ''-}}
 {%- for question in item.questions -%}
-{{-'<div class="no-break">' if format=='html' else ''-}}
+{{-'\n<div class="no-break">\n' if format=='html' else ''-}}
 {{ render_question(question, index+0.1*loop.index, level=3) }}
-{{-"</div>" if format=='html' else ''-}}
+{{-"\n</div>" if format=='html' else ''-}}
 {%- endfor -%}
 {%- else -%}
-{{-'<div class="no-break">' if format=='html' else ''-}}
+{{-'\n<div class="no-break">\n' if format=='html' else ''-}}
 {{ render_question(item, loop.index) }}
-{{-"</div>" if format=='html' else ''-}}
+{{-"\n</div>\n" if format=='html' else ''-}}
 {%- endif -%}
 {%- endfor -%}
 {%endblock body%}

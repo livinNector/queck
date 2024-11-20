@@ -67,8 +67,8 @@ templates = {}
 templates["md"] = get_template_env().get_template("quiz_template.md.jinja")
 templates["queck"] = get_template_env().get_template("queck_template.yaml.jinja")
 templates["fast"] = get_template_env(md=md["fast"]).get_template(
-    "quiz_template.html.jinja", globals={"render_mode": "fast"}
+    "quiz_template.html.jinja", globals={"render_mode": "fast", "format": "html"}
 )
 templates["compat"] = get_template_env(md=md["compat"]).get_template(
-    "quiz_template.html.jinja"
+    "quiz_template.html.jinja", globals={"format": "html"}
 )
