@@ -1,7 +1,6 @@
 {%- macro render_text(text,indent_level=4)%}
-{%- if text.split("\n") | map('length') | select("greaterthan",79) | first -%}>
-{{ text | replace('\n\n','\n\n\n') | wordwrap |indent(indent_level,first=True) }}
-{%- elif "\n" in text -%}|
+{#- For multiline text -#}
+{%- if "\n" in text -%}| 
 {{ text | indent(indent_level,first=True) }}
 {%- else -%}
 {{ text }}
