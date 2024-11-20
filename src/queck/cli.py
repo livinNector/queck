@@ -60,14 +60,15 @@ class Queck:
                     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
                     try:
-                        Quiz.from_queck(yaml_file).export(
+                        Quiz.read_queck(yaml_file).export(
                             output_file=output_file,
                             format=format,
                             render_mode=render_mode,
                         )
                     except ValueError:
                         raise ValueError(
-                            f"{yaml_file} is not valid queck file. Please fix the errors."
+                            f"{yaml_file} is not valid "
+                            "queck file. Please fix the errors."
                         )
                 except Exception as e:
                     print(e)
