@@ -1,10 +1,12 @@
 import functools
 import io
 import re
-from typing import ClassVar, Literal
+from typing import Annotated, ClassVar, Literal
 
+import mdformat
 import yaml
 from pydantic import (
+    AfterValidator,
     BaseModel,
     Field,
     RootModel,
@@ -16,9 +18,13 @@ from pydantic import (
 from .render_utils import templates
 from .utils import write_file
 
+MDStr = Annotated[
+    str, AfterValidator(lambda x: mdformat.text(x, options={"wrap": 70}).rstrip())
+]
+
 
 class Choice(BaseModel):
-    text: str
+    text: MDStr
     is_correct: bool
     feedback: str | None = ""
     choice_regex: ClassVar[str] = re.compile(
@@ -106,7 +112,7 @@ QuestionType = Literal["mcq", "msq", "nat", "sa", "desc"]
 
 
 class Question(BaseModel):
-    text: str
+    text: MDStr
     answer: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
         union_mode="left_to_right", default=None
     )
@@ -163,7 +169,7 @@ class QuestionGroup(BaseModel):
 
 class Comprehension(QuestionGroup):
     type: Literal["comp"] = "comp"
-    text: str
+    text: MDStr
 
 
 class Quiz(QuestionGroup):
