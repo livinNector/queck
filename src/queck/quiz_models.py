@@ -1,3 +1,5 @@
+import functools
+import io
 import re
 from typing import ClassVar, Literal
 
@@ -110,6 +112,7 @@ class Question(BaseModel):
     )
     feedback: str | None = ""
     marks: int | None = 0
+    tags: list[str] | None = Field(default_factory=list)
 
     @computed_field
     @property
@@ -132,7 +135,6 @@ class Question(BaseModel):
             case None:
                 return "none"
 
-    @computed_field
     @property
     def type(self) -> QuestionType:
         match self.answer:
@@ -148,10 +150,10 @@ class Question(BaseModel):
                 return "desc"  # description
 
 
-class Comprehension(BaseModel):
-    text: str
+class QuestionGroup(BaseModel):
+    """Base class for question containers."""
+
     questions: list[Question]
-    type: Literal["comp"] = "comp"
 
     @computed_field
     @property
@@ -159,21 +161,21 @@ class Comprehension(BaseModel):
         return sum(question.marks for question in self.questions)
 
 
-class Quiz(BaseModel):
+class Comprehension(QuestionGroup):
+    type: Literal["comp"] = "comp"
+    text: str
+
+
+class Quiz(QuestionGroup):
     title: str
     questions: list[Question | Comprehension]
 
-    @computed_field
-    @property
-    def marks(self) -> int | None:
-        return sum(question.marks for question in self.questions)
-
     @classmethod
-    def from_queck(cls, yaml_file):
-        """Loads and validates the quiz YAML file.
+    def read_queck(cls, queck_file):
+        """Loads and validates the queck YAML file.
 
         Args:
-            yaml_file (str): Path to the YAML file.
+            queck_file (str): Path to the queck YAML file.
 
         Returns:
             Quiz: Validated Quiz object if successful.
@@ -181,15 +183,15 @@ class Quiz(BaseModel):
         Raises:
             ValidationError: if validation is not successfull
         """
-        with open(yaml_file, "r") as f:
+        with open(queck_file, "r") as f:
             return cls.model_validate(yaml.safe_load(f))
 
     @classmethod
-    def from_queck_str(cls, queck_str:str):
-        """Loads and validates the Queck YAML string.
+    def from_queck(cls, queck_str: str):
+        """Loads and validates the queck YAML string.
 
         Args:
-            queck_str(str): the Queck YAML string.
+            queck_str(str): the queck YAML string.
 
         Returns:
             Quiz: Validated Quiz object if successful.
@@ -197,39 +199,52 @@ class Quiz(BaseModel):
         Raises:
             ValidationError: if validation is not successfull
         """
-        return cls.model_validate(yaml.safe_load(queck_str))
+        return cls.model_validate(yaml.safe_load(io.StringIO(queck_str)))
 
-    def as_html(self, render_mode: Literal["fast", "compat"] = "fast"):
+    @staticmethod
+    def write_file_wrapper(format):
+        def wrapper(func):
+            @functools.wraps(func)
+            def inner(self, file_name: str = None, *args, **kwargs) -> None:
+                if file_name:
+                    write_file(file_name, func(self, *args, **kwargs), format)
+                    return
+                return func(self)
+
+            return inner
+
+        return wrapper
+
+    @write_file_wrapper("yaml")
+    def to_queck(self):
+        return templates["queck"].render(quiz=self)
+
+    @write_file_wrapper("json")
+    def to_json(self, file_name):
+        write_file(file_name, self.model_dump_json(indent=2), "json")
+
+    @write_file_wrapper("md")
+    def to_md(self):
+        return templates["md"].render(quiz=self)
+
+    @write_file_wrapper("html")
+    def to_html(self, render_mode: Literal["fast", "compat"] = "fast"):
         assert render_mode in [
             "fast",
             "compat",
         ], 'render_mode must be one of "fast" or "compat"'
         return templates[render_mode].render(quiz=self)
 
-    def as_md(self):
-        return templates["md"].render(quiz=self)
-
-    def to_html(self, file_name, render_mode: Literal["fast", "compat"] = "fast"):
-        write_file(file_name, self.as_html(render_mode), "html")
-
-    def to_md(self, file_name):
-        write_file(file_name, self.as_md(), "md")
-
-    def to_json(self, file_name):
-        write_file(file_name, self.model_dump_json(indent=2), "json")
-
-    def to_queck(self, file_name):
-        # TODO: implememt this with a render template
-        ...
-
     def export(
         self,
         output_file=None,
-        format: Literal["html", "md", "json"] = "html",
+        format: Literal["queck", "html", "md", "json"] = "html",
         render_mode: Literal["fast", "compat"] = "fast",
     ):
         """Exports the quiz file to the required format."""
         match format:
+            case "queck":
+                self.to_queck(output_file)
             case "html":
                 self.to_html(output_file, render_mode=render_mode)
             case "md":
