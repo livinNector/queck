@@ -226,8 +226,8 @@ class Quiz(QuestionGroup):
         return templates["queck"].render(quiz=self)
 
     @write_file_wrapper("json")
-    def to_json(self, file_name):
-        write_file(file_name, self.model_dump_json(indent=2), "json")
+    def to_json(self):
+        return self.model_dump_json(indent=2)
 
     @write_file_wrapper("md")
     def to_md(self):
