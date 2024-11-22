@@ -1,6 +1,10 @@
 {% macro render_question(question, index, level=2) %}
 {{"#"*level}} Question {{ index }} [{{ question.type | upper }}] {%if question.marks %}({{question.marks}} marks){%endif%}
 
+{%if question.tags-%}
+***Tags:*** {% set comma = joiner(", ") -%}{%for tag in question.tags%}{{comma()}}`{{tag}}`{%endfor %}
+
+{%endif -%}
 {{ question.text }}  
 {% if question.answer_type in ['single_correct','multiple_correct'] -%}
 {%- for choice in question.answer.root %}
@@ -27,18 +31,21 @@
 {{ question.feedback }}
 {% endif -%}
 {% endmacro -%}
-
+{%macro overview_row(name, type)-%}
+{%-set questions = quiz.questions|selectattr('type', "equalto", type) | list -%}
+| {{name}} | {{ questions | length }} | {{questions | map(attribute='marks') | sum}} |
+{%-endmacro -%}
 {%block body%}
 # {{ quiz.title }} {%if quiz.marks %}({{quiz.marks}} marks){%endif%}
 
 ## Overview
-| Question Type       | Count |
-|---------------------|-------|
-| Single Correct (MCQ) | {{ quiz.questions|selectattr('type', "equalto", 'mcq') | list | length }} |
-| Multiple Correct (MSQ) | {{ quiz.questions|selectattr('type', "equalto", 'msq') | list | length }} | |
-| Numeric (NAT) | {{ quiz.questions|selectattr('type', "equalto", 'nat') | list | length }}  |
-| Short Answer (SA)    | {{ quiz.questions|selectattr('type', "equalto", 'sa') | list | length }} | |
-| Comprehension (COMP) | {{ quiz.questions|selectattr('type', "equalto", 'comp') | list | length }} | |
+| Question Type       | Count | Marks|
+|---------------------|-------|------|
+{{overview_row('Single Correct (MCQ)','mcq')}}
+{{overview_row('Multiple Correct (MSQ)','msq')}}
+{{overview_row('Numeric (NAT)','nat')}}
+{{overview_row('Short Answer (SA)','sa')}}
+{{overview_row('Comprehension (COMP)','comp')}}
 
 ---
 
