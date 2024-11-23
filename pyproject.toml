@@ -1,7 +1,7 @@
 
 [project]
 name = "queck"
-version = "0.0.2"
+version = "0.0.3"
 description = "A quiz authoring format and tool with different export formats."
 readme = "README.md"
 authors = [{ name = "Livin Nector", email = "livinnector2001@gmail.com" }]
@@ -24,6 +24,13 @@ dependencies = [
     "mdformat-black>=0.1.1",
     "mdformat-gfm>=0.3.7",
 ]
+
+[build-system]
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+"queck.templates" = ["*"]
 
 [project.scripts]
 queck = "queck.cli:main"
