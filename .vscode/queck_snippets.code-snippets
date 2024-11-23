@@ -1,0 +1,92 @@
+{
+  "Short answer": {
+    "scope": "yaml",
+    "prefix": "sa",
+    "body": ["- text: $1", "  answer: $2$0"],
+    "description": "Question with integer as answer."
+  },
+  "Numeric integer": {
+    "scope": "yaml",
+    "prefix": "nat-int",
+    "body": ["- text: ${1:Question goes here}", "  answer: ${2:0}"],
+    "description": "Question with integer as answer."
+  },
+  "Numeric range": {
+    "scope": "yaml",
+    "prefix": "nat-range",
+    "body": ["- text: ${1:Question goes here}", "  answer: ${2:0.9}..${3:1.1}"],
+    "description": "Question with numeric range as answer."
+  },
+  "Numeric tolerance": {
+    "scope": "yaml",
+    "prefix": "nat-tol",
+    "body": ["- text: ${1:Question goes here}", "  answer: ${2:1} | ${3:0.1}"],
+    "description": "Question with number with tolerance as answer."
+  },
+  "True or False": {
+    "scope": "yaml",
+    "prefix": ["bool", "true-false"],
+    "body": ["- text: ${1:Question goes here}", "  answer: ${2|true,false|}"],
+    "description": "Question with true or false as answer."
+  },
+  "Correct Choice": {
+    "scope": "yaml",
+    "prefix": "choice-correct",
+    "body": ["- (x) ${1:Correct Choice} // ${2:Optional Feedback}"]
+  },
+  "Incorrect Choice": {
+    "scope": "yaml",
+    "prefix": "choice-incorrect",
+    "body": ["- ( ) ${1:Incorrect Choice} // ${2:Optional Feedback}"]
+  },
+  "Multiple Choice Question": {
+    "scope": "yaml",
+    "prefix": "mcq",
+    "body": [
+      "- text: ${1:Question goes here}",
+      "  answer:",
+      "    - (x) ${2:Correct Choice}",
+      "    - ( ) ${3:Incorrect Choice}",
+      "    - ( ) ${4:Incorrect Choice}",
+      "    - ( ) ${5:Incorrect Choice}"
+    ],
+    "description": "Question with number with multiple choice answer."
+  },
+  "Multiple Choice Question - Two correct": {
+    "scope": "yaml",
+    "prefix": "mcq-2",
+    "body": [
+      "- text: ${1:Question goes here}",
+      "  answer:",
+      "    - (x) ${2:Correct Choice}",
+      "    - (x) ${3:Correct Choice}",
+      "    - ( ) ${4:Incorrect Choice}",
+      "    - ( ) ${5:Incorrect Choice}"
+    ],
+    "description": "Question with number with multiple choice answer with two correct options"
+  },
+  "Multiple Choice Question - Three correct": {
+    "scope": "yaml",
+    "prefix": "mcq-3",
+    "body": [
+      "- text: ${1:Question goes here}",
+      "  answer:",
+      "    - (x) ${2:Correct Choice}",
+      "    - (x) ${3:Correct Choice}",
+      "    - (x) ${4:Correct Choice}",
+      "    - ( ) ${5:Incorrect Choice}"
+    ],
+    "description": "Question with number with multiple choice answer with three correct options"
+  },
+  "Common Data Question": {
+    "scope": "yaml",
+    "prefix": "com",
+    "body": [
+      "- text: ${1:Common Context or Data}",
+      "  questions:",
+      "    - text: ${2:Question goes here}$0",
+      "      answer: $3"
+    ],
+    "description": "Question with number with multiple choice answer with three correct options"
+  }
+}

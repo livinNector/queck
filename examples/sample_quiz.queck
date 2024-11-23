@@ -84,10 +84,9 @@ questions:
     marks: 2
 
   # Comprehension question
-  - text: >
+  - text: |
       The following questions are about the solar system.
       Read the below passage before answering.
-
 
       The solar system consists of the Sun and the objects that orbit around it,
       including eight planets, moons, and other celestial bodies. 

@@ -1,0 +1,247 @@
+{
+  "$defs": {
+    "Choice": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "is_correct": {
+          "title": "Is Correct",
+          "type": "boolean"
+        },
+        "feedback": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "",
+          "title": "Feedback"
+        }
+      },
+      "required": [
+        "text",
+        "is_correct"
+      ],
+      "title": "Choice",
+      "type": "object"
+    },
+    "Choices": {
+      "items": {
+        "$ref": "#/$defs/Choice"
+      },
+      "title": "Choices",
+      "type": "array"
+    },
+    "CommonDataQuestion": {
+      "properties": {
+        "questions": {
+          "description": "The list of questions relevant to the common data.",
+          "items": {
+            "$ref": "#/$defs/Question"
+          },
+          "title": "Questions",
+          "type": "array"
+        },
+        "type": {
+          "const": "com",
+          "default": "com",
+          "enum": [
+            "com"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "description": "The common data for questions",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "questions",
+        "text"
+      ],
+      "title": "CommonDataQuestion",
+      "type": "object"
+    },
+    "NumRange": {
+      "properties": {
+        "high": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "High"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Low"
+        }
+      },
+      "required": [
+        "high",
+        "low"
+      ],
+      "title": "NumRange",
+      "type": "object"
+    },
+    "NumTolerance": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Value"
+        },
+        "tol": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Tol"
+        }
+      },
+      "required": [
+        "value",
+        "tol"
+      ],
+      "title": "NumTolerance",
+      "type": "object"
+    },
+    "Question": {
+      "properties": {
+        "text": {
+          "description": "The statement of the question.",
+          "title": "Text",
+          "type": "string"
+        },
+        "answer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Choices"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "$ref": "#/$defs/NumRange"
+            },
+            {
+              "$ref": "#/$defs/NumTolerance"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "One of the different answer types. Choices for mcq and msq. int, NumRange, NumTolerance for nat. string for short answer and bool for true or false.",
+          "title": "Answer"
+        },
+        "feedback": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "",
+          "title": "Feedback"
+        },
+        "marks": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 0,
+          "title": "Marks"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tags"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Question",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "questions": {
+      "description": "List of questions or Comprehensions (Common data questions).",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Question"
+          },
+          {
+            "$ref": "#/$defs/CommonDataQuestion"
+          }
+        ]
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "questions",
+    "title"
+  ],
+  "title": "Quiz",
+  "type": "object"
+}
