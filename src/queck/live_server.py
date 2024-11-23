@@ -13,7 +13,7 @@ class LiveServer:
         self.port = port
         self.ws_port = ws_port
 
-    async def websocket_handler(self, websocket, path):
+    async def websocket_handler(self, websocket):
         # Register client
         self.clients.add(websocket)
         print(f"New WebSocket connection. Total connections: {len(self.clients)}")
