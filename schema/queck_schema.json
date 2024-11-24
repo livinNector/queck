@@ -1,17 +1,12 @@
 {
   "$defs": {
-    "Choice": {
-      "description": "Represents a choice option with a specific format and optional feedback.\n\nFormat: `(x| ) {text} // {feedback}`\n\n- `(x)` denotes the option is correct.\n- `( )` denotes the option is incorrect.\n- `text` is the choice content (can span multiple lines).\n- `feedback` is optional and explains the correctness or details about the choice (can span multiple lines).\n\nExamples:\n    - `( ) incorrect choice // This choice is incorrect`\n    - `(x) correct choice // This is the correct answer`\n    - `( ) another incorrect choice`",
-      "pattern": "\\((x| )\\) *((.|\\r?\\n)*?) *(// *((.|\\r?\\n)*))?$",
-      "title": "Choice",
-      "type": "string"
-    },
     "CommonDataQuestion": {
+      "additionalProperties": false,
       "description": "Represents a set of questions that share a common context or data.\n\nAttributes:\n    - `text`: The shared context or data for the questions.\n    - `questions`: A list of questions based on the common context.",
       "properties": {
         "text": {
           "description": "The shared context or common data for the questions.",
-          "title": "Text",
+          "title": "Common Data",
           "type": "string"
         },
         "questions": {
@@ -30,43 +25,80 @@
       "title": "CommonDataQuestion",
       "type": "object"
     },
+    "CorrectChoice": {
+      "description": "Correct Choice in a multiple choice question.\n\nFormat: `(x) {text} // {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nExamples:\n    - (x) correct choice // This is the correct answer\n    - (x) another correct choice\n    - |\n      (x) This is another correct choice\n      That can span muliple lines.\n      // This is going to be a multiline feedback\n      and this is the second line of the feedback",
+      "pattern": "\\(x\\) *((.|\\r?\\n)*?) *(// *((.|\\r?\\n)*))?$",
+      "title": "CorrectChoice",
+      "type": "string"
+    },
+    "Description": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "description": "Text only container that can be used for holding instructions or reference information.",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Description",
+      "type": "object"
+    },
+    "IncorrectChoice": {
+      "description": "Incorrect Choice in a multiple choice question.\n\nFormat: `( ) {text} // {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nExamples:\n    - ( ) incorrect choice // This is the incorrect answer\n    - ( ) another incorrect choice\n    - |\n      ( ) This is another incorrect choice\n      That can span muliple lines.\n      // This is going to be a multiline feedback\n      and this is the second line of the feedback.",
+      "pattern": "\\( \\) *((.|\\r?\\n)*?) *(// *((.|\\r?\\n)*))?$",
+      "title": "IncorrectChoice",
+      "type": "string"
+    },
     "NumRange": {
-      "description": "Represents a numerical range in the format `{low}..{high}`.\n\n`low` and `high` are numerical values representing the range boundaries.",
+      "description": "Numerical range based answer.\n\nFormat: `{low}..{high}`.\n\n    - `low` and `high` are numerical values representing the\n    range boundaries.\n\nBoth `low` and `high` can be integer or floating point types.",
       "pattern": "\\s*\\d*\\.?\\d*\\s*\\.\\.\\s*\\d*\\.?\\d*",
       "title": "NumRange",
       "type": "string"
     },
     "NumTolerance": {
-      "description": "Represents a numerical value with tolerance in the format `{val}|{tolerance}`.\n\n- `val` is the base value.\n- `tolerance` specifies the allowable deviation.",
+      "description": "Numerical answer with tolerance.\n\nFormat: `{val}|{tolerance}`\n\n    - `val` is the base value.\n    - `tolerance` specifies the allowable deviation.\n\nBoth `val` and `tolerance` can be integer or floating point types.",
       "pattern": "\\s*\\d*\\.?\\d*\\s*\\|\\s*\\d*\\.?\\d*",
       "title": "NumTolerance",
       "type": "string"
     },
     "Question": {
       "additionalProperties": false,
-      "description": "Defines a single question with various types of answers.\n\nAttributes:\n    - `text` : The statement or body of the question.\n\n    - `answer` : The expected answer, which can be:\n        - A list of choices (e.g., `Choice`).\n        - A numerical value (integer, range, or tolerance).\n        - A text response (string).\n        - A boolean (True/False).\n        - None (if the question is descriptive or rhetorical).\n\n    - `feedback` : Optional feedback or explanation about the question or its solution.\n\n    - `marks` : The marks allotted for the question (default is 0).\n\n    - `tags` : A list of tags categorizing the question. Tags are stored in lowercase.",
+      "description": "Question with an answer.\n\nAttributes:\n    - `text` : The statement or body of the question.\n\n    - `answer` : The expected answer, which can be:\n        - A list of choices (e.g., `Choice`).\n        - A numerical value (integer, range, or tolerance).\n        - A text response (string).\n        - A boolean (True/False).\n\n    - `feedback` : Optional feedback or explanation about the question or its solution.\n\n    - `marks` : The marks allotted for the question (default is 0).\n\n    - `tags` : A list of tags categorizing the question. Tags are stored in lowercase.",
       "properties": {
         "text": {
           "default": "Question statement",
           "description": "The statement or body of the question.",
-          "title": "Text",
+          "title": "Question",
           "type": "string"
         },
         "answer": {
           "anyOf": [
             {
+              "description": "List of choices for a multiple choice question.",
               "items": {
-                "$ref": "#/$defs/Choice"
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/CorrectChoice"
+                  },
+                  {
+                    "$ref": "#/$defs/IncorrectChoice"
+                  }
+                ]
               },
+              "title": "Choices",
               "type": "array"
             },
             {
-              "type": "string"
-            },
-            {
+              "description": "True or false answer.",
+              "title": "TrueOrFalse",
               "type": "boolean"
             },
             {
+              "description": "Numerical integer answer.",
+              "title": "Integer",
               "type": "integer"
             },
             {
@@ -76,11 +108,11 @@
               "$ref": "#/$defs/NumTolerance"
             },
             {
-              "type": "null"
+              "description": "Text based answer.",
+              "title": "ShortAnswer",
+              "type": "string"
             }
           ],
-          "default": null,
-          "description": "The expected answer to the question. Can be one of:\n- A list of choices (e.g., multiple-choice options).\n- A numerical value (integer, range, or tolerance).\n- A textual response (string).\n- A boolean (true/false).\n- None (if the question is descriptive).",
           "title": "Answer"
         },
         "feedback": {
@@ -103,9 +135,6 @@
             },
             {
               "type": "number"
-            },
-            {
-              "type": "null"
             }
           ],
           "default": 0,
@@ -128,6 +157,9 @@
           "title": "Tags"
         }
       },
+      "required": [
+        "answer"
+      ],
       "title": "Question",
       "type": "object"
     }
@@ -144,6 +176,9 @@
       "description": "A collection of questions, which may include standalone questions or common-data questions.",
       "items": {
         "anyOf": [
+          {
+            "$ref": "#/$defs/Description"
+          },
           {
             "$ref": "#/$defs/Question"
           },
