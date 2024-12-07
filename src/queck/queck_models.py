@@ -1,121 +1,51 @@
-import re
-from typing import Annotated
+import abc
+from functools import cached_property
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, StringConstraints
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    computed_field,
+)
 
+from .answer_models import (
+    Integer,
+    MultipleChoiceAnswer,
+    MultipleCorrectChoices,
+    NumRange,
+    NumTolerance,
+    ShortAnswer,
+    SingleCorrectChoice,
+    TrueOrFalse,
+)
 
-class CorrectChoice(RootModel):
-    """Correct Choice in a multiple choice question.
-
-    Format: `(x) {text} // {feedback}`
-        - `text` is the choice content
-        - `feedback` is optional and explains the correctness or
-        details about the choice
-
-    Both text and feedback can span multiple lines.
-
-    Examples:
-        - (x) correct choice // This is the correct answer
-        - (x) another correct choice
-        - |
-          (x) This is another correct choice
-          That can span muliple lines.
-          // This is going to be a multiline feedback
-          and this is the second line of the feedback
-    """
-
-    root: str = Field(
-        pattern=re.compile(r"\(x\) *((.|\r?\n)*?) *(// *((.|\r?\n)*))?$"),
-    )
-
-
-class IncorrectChoice(RootModel):
-    """Incorrect Choice in a multiple choice question.
-
-    Format: `( ) {text} // {feedback}`
-        - `text` is the choice content
-        - `feedback` is optional and explains the correctness or
-        details about the choice
-
-    Both text and feedback can span multiple lines.
-
-    Examples:
-        - ( ) incorrect choice // This is the incorrect answer
-        - ( ) another incorrect choice
-        - |
-          ( ) This is another incorrect choice
-          That can span muliple lines.
-          // This is going to be a multiline feedback
-          and this is the second line of the feedback.
-    """
-
-    root: str = Field(
-        pattern=re.compile(r"\( \) *((.|\r?\n)*?) *(// *((.|\r?\n)*))?$"),
-    )
-
-
-Choices = Annotated[
-    list[CorrectChoice | IncorrectChoice],
-    Field(
-        title="Choices", description="List of choices for a multiple choice question."
-    ),
-]
-
-ShortAnswer = Annotated[
-    str, Field(title="ShortAnswer", description="Text based answer.")
-]
-TrueOrFalse = Annotated[
-    bool, Field(title="TrueOrFalse", description="True or false answer.")
-]
-Integer = Annotated[
-    int, Field(title="Integer", description="Numerical integer answer.")
+QuestionType = Literal[
+    "multiple_choice",
+    "multiple_select",
+    "numerical_answer",
+    "short_answer",
+    "description",
+    "common_data",
 ]
 
 
-class NumRange(RootModel):
-    """Numerical range based answer.
-
-    Format: `{low}..{high}`.
-
-        - `low` and `high` are numerical values representing the
-        range boundaries.
-
-    Both `low` and `high` can be integer or floating point types.
-    """
-
-    root: str = Field(pattern=re.compile(r"\s*\d*\.?\d*\s*\.\.\s*\d*\.?\d*"))
-
-
-class NumTolerance(RootModel):
-    """Numerical answer with tolerance.
-
-    Format: `{val}|{tolerance}`
-
-        - `val` is the base value.
-        - `tolerance` specifies the allowable deviation.
-
-    Both `val` and `tolerance` can be integer or floating point types.
-    """
-
-    root: str = Field(
-        pattern=re.compile(r"\s*\d*\.?\d*\s*\|\s*\d*\.?\d*"),
-    )
-
-
-class TextContainerBase(BaseModel):
-    text: str
+class QuestionBase(abc.ABC, BaseModel):
     model_config = ConfigDict(extra="forbid")
+    text: str
 
 
-class Description(TextContainerBase):
+class Description(QuestionBase):
+    type: QuestionType = "description"
     text: str = Field(
         title="Description",
-        description="Text only container that can be used for holding "
-        "instructions or reference information.",
+        description="Text only content used for holding instructions "
+        "or reference information.",
     )
 
 
-class Question(TextContainerBase):
+class Question(QuestionBase):
     """Question with an answer.
 
     Attributes:
@@ -139,7 +69,14 @@ class Question(TextContainerBase):
         default="Question statement",
         description="The statement or body of the question.",
     )
-    answer: Choices | TrueOrFalse | Integer | NumRange | NumTolerance | ShortAnswer
+    answer: (
+        MultipleChoiceAnswer
+        | TrueOrFalse
+        | Integer
+        | NumRange
+        | NumTolerance
+        | ShortAnswer
+    )
     feedback: str | None = Field(
         default="",
         description="Optional feedback or explanation for the question. "
@@ -153,8 +90,21 @@ class Question(TextContainerBase):
         default_factory=list, description="A list of tags categorizing the question."
     )
 
+    @computed_field
+    @cached_property
+    def type(self) -> QuestionType:
+        match self.answer:
+            case SingleCorrectChoice() | TrueOrFalse():
+                return "multiple_choice"
+            case MultipleCorrectChoices():
+                return "multiple_select"
+            case ShortAnswer():
+                return "short_answer"
+            case Integer() | NumRange() | NumTolerance():
+                return "numerical_answer"
 
-class CommonDataQuestion(TextContainerBase):
+
+class CommonDataQuestion(QuestionBase):
     """Represents a set of questions that share a common context or data.
 
     Attributes:
@@ -162,12 +112,14 @@ class CommonDataQuestion(TextContainerBase):
         - `questions`: A list of questions based on the common context.
     """
 
+    type: QuestionType = "common_data"
     text: str = Field(
-        title="Common Data",
+        title="CommonData",
         description="The shared context or common data for the questions.",
     )
     questions: list[Question] = Field(
-        description="A list of questions related to the common data."
+        title="ContextualQuestions",
+        description="A list of questions related to the common data.",
     )
 
 
