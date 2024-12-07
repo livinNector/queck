@@ -1,4 +1,34 @@
 {
+  "Title": {
+    "scope": "yaml",
+    "prefix": "title",
+    "body": ["title: ${1}", "questions:", "  $0"],
+    "description": "Title"
+  },
+  "Text": {
+    "scope": "yaml",
+    "prefix": "text",
+    "body": ["- text: ${1}", "  $0"],
+    "description": "Text"
+  },
+  "Text - Multiline": {
+    "scope": "yaml",
+    "prefix": "text-multiline",
+    "body": ["- text: |", "    ${1}", "  $0"],
+    "description": "Multiline Text"
+  },
+  "Answer": {
+    "scope": "yaml",
+    "prefix": "answer",
+    "body": ["answer: ${1}"],
+    "description": "Answer"
+  },
+  "Answer List": {
+    "scope": "yaml",
+    "prefix": "answer-list",
+    "body": ["answer: ", "  ${1}"],
+    "description": "Answer"
+  },
   "Short answer": {
     "scope": "yaml",
     "prefix": "short-answer",
@@ -46,6 +76,11 @@
     "prefix": "choice-correct",
     "body": ["- (x) ${1:Correct Choice}"]
   },
+  "Correct Choice - Multiline": {
+    "scope": "yaml",
+    "prefix": "choice-correct-multiline",
+    "body": ["- |", "  (x) ${1:Correct Choice}"]
+  },
   "Correct Choice with feedback": {
     "scope": "yaml",
     "prefix": "choice-correct-feedback",
@@ -55,6 +90,11 @@
     "scope": "yaml",
     "prefix": "choice-incorrect",
     "body": ["- ( ) ${1:Incorrect Choice}"]
+  },
+  "Incorrect Choice - Multiline": {
+    "scope": "yaml",
+    "prefix": "choice-incorrect-multiline",
+    "body": ["- |", "  ( ) ${1:Incorrect Choice}"]
   },
   "Incorrect Choice with feedback": {
     "scope": "yaml",
