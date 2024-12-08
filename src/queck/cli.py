@@ -6,10 +6,10 @@ import fire
 from watchfiles import awatch
 
 from .live_server import LiveServer
-from .quiz_models import Quiz
+from .queck_models import Queck
 
 
-class Queck:
+class QueckCli:
     """A CLI tool for Quiz Validation and Exporting.
 
     Provides options to validate and export quizzes defined in YAML format.
@@ -60,7 +60,7 @@ class Queck:
                     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
                     try:
-                        Quiz.read_queck(yaml_file).export(
+                        Queck.read_queck(yaml_file).export(
                             output_file=output_file,
                             format=format,
                             render_mode=render_mode,
@@ -111,7 +111,7 @@ class Queck:
 
 def main():
     # Fire the CLI with the Queck class
-    fire.Fire(Queck())
+    fire.Fire(QueckCli())
 
 
 if __name__ == "__main__":

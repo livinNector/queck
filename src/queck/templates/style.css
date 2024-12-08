@@ -74,3 +74,66 @@ blockquote {
   accent-color: green;
   pointer-events: none;
 }
+
+/* General styles for callouts */
+.callout {
+  border-left: solid thick #ccc;
+  padding-left: 1em;
+}
+
+.callout-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.callout-title .callout-symbol {
+  margin-right: 8px;
+  font-size: 1.2em;
+}
+
+/* Specific styles for each callout type */
+.callout-note {
+  border-color: #3182ce;
+}
+
+.callout-note .callout-symbol {
+  color: #3182ce;
+}
+
+.callout-tip {
+  border-color: #48bb78;
+}
+
+.callout-tip .callout-symbol {
+  color: #48bb78;
+}
+
+.callout-important {
+  border-color: #805ad5;
+}
+
+.callout-important .callout-symbol {
+  color: #805ad5;
+}
+
+.callout-warning {
+  border-color: #dd6b20;
+}
+
+.callout-warning .callout-symbol {
+  color: #dd6b20;
+}
+
+.callout-caution {
+  border-color: #e53e3e;
+}
+
+.callout-caution {
+  .callout-symbol,
+  .callout-title {
+    color: #e53e3e;
+  }
+}

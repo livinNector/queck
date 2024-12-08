@@ -181,17 +181,10 @@
           "title": "Answer"
         },
         "feedback": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
           "default": "",
           "description": "Optional feedback or explanation for the question. Can include solutions, hints, or clarifications.",
-          "title": "Feedback"
+          "title": "Feedback",
+          "type": "string"
         },
         "marks": {
           "anyOf": [

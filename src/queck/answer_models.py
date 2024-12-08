@@ -20,6 +20,10 @@ AnswerType = Literal[
     "none",
 ]
 
+Number = int | float
+
+NumberAdapter = TypeAdapter(Number)
+
 
 def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
     # return Field(default="", pattern=re.sub(r"\?P<.*?>", "", pattern), **kwargs)
@@ -30,14 +34,20 @@ class PatternStringBase(abc.ABC, RootModel):
     """Base class for regex parseable strings with named capture groups."""
 
     pattern: ClassVar[str]
+    format: ClassVar[str] = ""
 
     @model_validator(mode="after")
     def cache_groups(self):
         self._groups = re.match(self.pattern, self.root).groupdict()
-        if hasattr(self, "reformat"):
-            self.root = self.reformat(**self._groups)
-            return self
+        self.post_group_extraction_hook()
         return self
+
+    def post_group_extraction_hook(self):
+        if self.format:
+            assert hasattr(
+                self, "_groups"
+            ), "post_group_extraction_hook should be called after extracting the groups"
+            self.root = self.format.format(**self._groups)
 
     def get_group(self, name):
         return self._groups[name]
@@ -46,11 +56,11 @@ class PatternStringBase(abc.ABC, RootModel):
 class ChoiceBase(PatternStringBase):
     @property
     def text(self):
-        return self.get_group("text")
+        return self.get_group("text").strip()
 
     @property
     def feedback(self):
-        return self.get_group("feedback")
+        return self.get_group("feedback").strip()
 
 
 class CorrectChoice(ChoiceBase):
@@ -114,6 +124,9 @@ incorrect_choice_adapter = TypeAdapter(IncorrectChoice)
 class ChoicesBase(RootModel):
     def __getitem__(self, item):
         return self.root[item]
+
+    def __iter__(self):
+        return iter(self.root)
 
     @property
     def n_correct(self):
@@ -194,21 +207,30 @@ MultipleChoiceAnswer = Annotated[
 ]
 
 
-class ShortAnswer(RootModel):
+class ValueModel(RootModel):
+    """Same as RootModel but adds and alias value to root attribute of root model."""
+
+    @property
+    def value(self):
+        """Alias for root."""
+        return self.root
+
+
+class ShortAnswer(ValueModel):
     """Text based answer."""
 
     type: ClassVar[AnswerType] = "short_answer"
     root: str
 
 
-class TrueOrFalse(RootModel):
+class TrueOrFalse(ValueModel):
     """True or false answer."""
 
     type: ClassVar[AnswerType] = "true_false"
     root: bool
 
 
-class Integer(RootModel):
+class Integer(ValueModel):
     """Numerical integer answer."""
 
     type: ClassVar[AnswerType] = "num_int"
@@ -232,6 +254,12 @@ class NumRange(PatternStringBase):
         r"^\s*(?P<low>-?\d*\.?\d*)\s*\.\.\s*(?P<high>-?\d*\.?\d*)\s*"
     )
     root: str = PatternField(pattern=pattern)
+
+    def post_group_extraction_hook(self):
+        self._groups["low"], self._groups["high"] = map(
+            NumberAdapter.validate_python, sorted(self._groups.values())
+        )
+        return super().post_group_extraction_hook()
 
     @property
     def low(self):
@@ -258,6 +286,13 @@ class NumTolerance(PatternStringBase):
         r"^\s*(?P<value>-?\d*\.?\d*)\s*\|\s*(?P<tolerance>-?\d*\.?\d*)$"
     )
     root: str = PatternField(pattern=pattern)
+
+    def post_group_extraction_hook(self):
+        self._groups["value"] = NumberAdapter.validate_python(self._groups["value"])
+        self._groups["tolerance"] = NumberAdapter.validate_python(
+            self._groups["tolerance"]
+        )
+        return super().post_group_extraction_hook()
 
     @property
     def value(self):
