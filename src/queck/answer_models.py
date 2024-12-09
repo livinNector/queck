@@ -5,7 +5,9 @@ from typing import Annotated, ClassVar, Literal
 from pydantic import (
     Field,
     RootModel,
+    SerializationInfo,
     TypeAdapter,
+    model_serializer,
     model_validator,
 )
 
@@ -35,12 +37,21 @@ class PatternStringBase(abc.ABC, RootModel):
 
     pattern: ClassVar[str]
     format: ClassVar[str] = ""
+    serialize_attrs: ClassVar[list[str]]  # used when serialzed in dict mode.
 
     @model_validator(mode="after")
     def cache_groups(self):
         self._groups = re.match(self.pattern, self.root).groupdict()
         self.post_group_extraction_hook()
         return self
+
+    @model_serializer(mode="plain")
+    def serialize(self, info: SerializationInfo) -> str | dict:
+        context = info.context
+        if context is not None and context.get("parsed", False):
+            return {attr: getattr(self, attr) for attr in self.serialize_attrs}
+        else:
+            return self.root
 
     def post_group_extraction_hook(self):
         if self.format:
@@ -54,13 +65,23 @@ class PatternStringBase(abc.ABC, RootModel):
 
 
 class ChoiceBase(PatternStringBase):
+    serialize_attrs: ClassVar[list[str]] = [
+        "is_correct",
+        "text",
+        "feedback",
+    ]
+
     @property
     def text(self):
         return self.get_group("text").strip()
 
     @property
     def feedback(self):
-        return self.get_group("feedback").strip()
+        feedback = self.get_group("feedback")
+        if feedback is not None:
+            return feedback.strip()
+        else:
+            return ""
 
 
 class CorrectChoice(ChoiceBase):
@@ -253,6 +274,7 @@ class NumRange(PatternStringBase):
     pattern: ClassVar[str] = (
         r"^\s*(?P<low>-?\d*\.?\d*)\s*\.\.\s*(?P<high>-?\d*\.?\d*)\s*"
     )
+    serialize_attrs: ClassVar[list[str]] = ["low", "high"]
     root: str = PatternField(pattern=pattern)
 
     def post_group_extraction_hook(self):
@@ -285,6 +307,7 @@ class NumTolerance(PatternStringBase):
     pattern: ClassVar[str] = (
         r"^\s*(?P<value>-?\d*\.?\d*)\s*\|\s*(?P<tolerance>-?\d*\.?\d*)$"
     )
+    serialize_attrs: ClassVar[list[str]] = ["value", "tolerance"]
     root: str = PatternField(pattern=pattern)
 
     def post_group_extraction_hook(self):
