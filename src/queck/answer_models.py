@@ -1,6 +1,7 @@
 import abc
+from dataclasses import dataclass
 import re
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, ClassVar, Generic, Literal, TypeVar
 
 from pydantic import (
     Field,
@@ -46,7 +47,7 @@ class PatternStringBase(abc.ABC, RootModel):
         return self
 
     @model_serializer(mode="plain")
-    def serialize(self, info: SerializationInfo) -> str | dict:
+    def ser_parsed(self, info: SerializationInfo) -> str | dict:
         context = info.context
         if context is not None and context.get("parsed", False):
             return {attr: getattr(self, attr) for attr in self.serialize_attrs}
@@ -228,13 +229,29 @@ MultipleChoiceAnswer = Annotated[
 ]
 
 
-class ValueModel(RootModel):
+T = TypeVar("T")
+
+
+@dataclass
+class Value[T]:
+    value: T
+
+
+class ValueModel(RootModel[T]):
     """Same as RootModel but adds and alias value to root attribute of root model."""
 
     @property
     def value(self):
         """Alias for root."""
         return self.root
+
+    @model_serializer(mode="plain")
+    def ser_parsed(self, info: SerializationInfo) -> T | Value[T]:
+        context = info.context
+        if context is not None and context.get("parsed", False):
+            return Value(value=self.value)
+        else:
+            return self.root
 
 
 class ShortAnswer(ValueModel):
