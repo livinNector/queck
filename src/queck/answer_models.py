@@ -1,7 +1,7 @@
 import abc
-from dataclasses import dataclass
 import re
-from typing import Annotated, ClassVar, Generic, Literal, TypeVar
+from dataclasses import dataclass
+from typing import Annotated, ClassVar, Literal, TypeVar
 
 from pydantic import (
     Field,
@@ -29,7 +29,6 @@ NumberAdapter = TypeAdapter(Number)
 
 
 def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
-    # return Field(default="", pattern=re.sub(r"\?P<.*?>", "", pattern), **kwargs)
     return Field(default="", pattern=re.sub(r"\?P", "?", pattern), **kwargs)
 
 
@@ -43,7 +42,7 @@ class PatternStringBase(abc.ABC, RootModel):
     @model_validator(mode="after")
     def cache_groups(self):
         self._groups = re.match(self.pattern, self.root).groupdict()
-        self.post_group_extraction_hook()
+        self.postprocess_groups()
         return self
 
     @model_serializer(mode="plain")
@@ -52,13 +51,13 @@ class PatternStringBase(abc.ABC, RootModel):
         if context is not None and context.get("parsed", False):
             return {attr: getattr(self, attr) for attr in self.serialize_attrs}
         else:
-            return self.root
+            return self.format.format(**self._groups)
 
-    def post_group_extraction_hook(self):
+    def postprocess_groups(self):
         if self.format:
             assert hasattr(
                 self, "_groups"
-            ), "post_group_extraction_hook should be called after extracting the groups"
+            ), "postprocess_groups should be called after extracting the groups"
             self.root = self.format.format(**self._groups)
 
     def get_group(self, name):
@@ -294,11 +293,10 @@ class NumRange(PatternStringBase):
     serialize_attrs: ClassVar[list[str]] = ["low", "high"]
     root: str = PatternField(pattern=pattern)
 
-    def post_group_extraction_hook(self):
-        self._groups["low"], self._groups["high"] = map(
-            NumberAdapter.validate_python, sorted(self._groups.values())
+    def postprocess_groups(self):
+        self._groups["low"], self._groups["high"] = sorted(
+            map(NumberAdapter.validate_python, self._groups.values())
         )
-        return super().post_group_extraction_hook()
 
     @property
     def low(self):
@@ -321,18 +319,18 @@ class NumTolerance(PatternStringBase):
     """
 
     type: ClassVar[str] = "num_tolerance"
+    format: ClassVar[str] ="{value}|{tolerance}"
     pattern: ClassVar[str] = (
         r"^\s*(?P<value>-?\d*\.?\d*)\s*\|\s*(?P<tolerance>-?\d*\.?\d*)$"
     )
     serialize_attrs: ClassVar[list[str]] = ["value", "tolerance"]
     root: str = PatternField(pattern=pattern)
 
-    def post_group_extraction_hook(self):
+    def postprocess_groups(self):
         self._groups["value"] = NumberAdapter.validate_python(self._groups["value"])
         self._groups["tolerance"] = NumberAdapter.validate_python(
             self._groups["tolerance"]
         )
-        return super().post_group_extraction_hook()
 
     @property
     def value(self):
