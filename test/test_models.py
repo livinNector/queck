@@ -104,6 +104,11 @@ def test_choices(choice_str, expected_text, expected_feedback, is_correct):
     assert instantiated.text == expected_text
     assert instantiated.feedback == expected_feedback
     assert instantiated.is_correct == is_correct
+    assert instantiated.model_dump(context={"parsed":True})  == {
+        "text": expected_text,
+        "feedback": expected_feedback,
+        "is_correct": is_correct
+    }
 
 
 @pytest.mark.parametrize(

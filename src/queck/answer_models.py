@@ -105,6 +105,7 @@ class CorrectChoice(ChoiceBase):
     """
 
     is_correct: ClassVar[bool] = True
+    format: ClassVar[str] = "(x) {text} // {feedback}"
     pattern: ClassVar[str] = (
         r"\(x\) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$"
     )
@@ -132,6 +133,7 @@ class IncorrectChoice(ChoiceBase):
     """
 
     is_correct: ClassVar[bool] = False
+    format: ClassVar[str] = "( ) {text} // {feedback}"
     pattern: ClassVar[str] = (
         r"\( \) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$"
     )
