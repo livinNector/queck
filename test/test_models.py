@@ -1,7 +1,5 @@
 import pytest
-from pydantic import ValidationError
 
-# Importing all the necessary components from the provided code
 from queck.answer_models import (
     CorrectChoice,
     IncorrectChoice,
@@ -65,7 +63,6 @@ def queck_fixture():
     )
 
 
-# Parameterized tests for choices
 @pytest.mark.parametrize(
     "choice_str, expected_text, expected_feedback, is_correct",
     [
@@ -82,119 +79,89 @@ def queck_fixture():
             "Explanation Line 1\nLine 2",
             True,
         ),
-    ],
-)
-def test_choices(choice_str, expected_text, expected_feedback, is_correct):
-    choice = (
-        CorrectChoice(root=choice_str)
-        if is_correct
-        else IncorrectChoice(root=choice_str)
-    )
-    assert choice.text == expected_text
-    assert choice.feedback == expected_feedback
-    assert choice.is_correct == is_correct
-
-
-@pytest.mark.parametrize(
-    "choice_str, expected_text, expected_feedback",
-    [
-        ("(x) Correct Choice // Explanation", "Correct Choice", "Explanation"),
-        (
-            "(x) Correct Choice Line 1\nLine 2 // Explanation Line 1\nLine 2",
-            "Correct Choice Line 1\nLine 2",
-            "Explanation Line 1\nLine 2",
-        ),
-        ("(x)\nCorrect Choice\n// Explanation", "Correct Choice", "Explanation"),
+        ("( )\nCorrect Choice\n// Explanation", "Correct Choice", "Explanation", False),
         (
             "(x)\nCorrect Choice\n\n\n// \n\nExplanation\n\n",
             "Correct Choice",
             "Explanation",
+            True,
         ),
     ],
 )
-def test_correct_choice(choice_str, expected_text, expected_feedback):
-    validated = CorrectChoice.model_validate(choice_str)
-    assert validated.text == expected_text
-    assert validated.feedback == expected_feedback
-    validated = CorrectChoice(root=choice_str)
-    assert validated.text == expected_text
-    assert validated.feedback == expected_feedback
+def test_choices(choice_str, expected_text, expected_feedback, is_correct):
+    instantiated = (
+        CorrectChoice(root=choice_str)
+        if is_correct
+        else IncorrectChoice(root=choice_str)
+    )
+    validated = (
+        CorrectChoice.model_validate(choice_str)
+        if is_correct
+        else IncorrectChoice.model_validate(choice_str)
+    )
+
+    assert instantiated == validated
+    assert instantiated.text == expected_text
+    assert instantiated.feedback == expected_feedback
+    assert instantiated.is_correct == is_correct
 
 
 @pytest.mark.parametrize(
-    "choice_str, expected_text, expected_feedback",
+    ["range_str", "expected_low", "expected_high", "serialized"],
     [
-        ("( ) Incorrect Choice // Explanation", "Incorrect Choice", "Explanation"),
-        (
-            "( ) Incorrect Choice Line 1\nLine 2 // Explanation Line 1\nLine 2",
-            "Incorrect Choice Line 1\nLine 2",
-            "Explanation Line 1\nLine 2",
-        ),
-        ("( )\nIncorrect Choice\n// Explanation", "Incorrect Choice", "Explanation"),
-        (
-            "( )\nIncorrect Choice\n\n\n// \n\nExplanation\n\n",
-            "Incorrect Choice",
-            "Explanation",
-        ),
+        ("10..1", 1, 10, "1..10"),
+        ("10  .. 1", 1, 10, "1..10"),
+        ("-10..1.2", -10, 1.2, "-10..1.2"),
     ],
 )
-def test_incorrect_choice(choice_str, expected_text, expected_feedback):
-    validated = IncorrectChoice.model_validate(choice_str)
-    assert validated.text == expected_text
-    assert validated.feedback == expected_feedback
-    validated = IncorrectChoice(root=choice_str)
-    assert validated.text == expected_text
-    assert validated.feedback == expected_feedback
-
-
-# Parameterized tests for numerical ranges and tolerances
-@pytest.mark.parametrize(
-    "range_str, expected_low, expected_high",
-    [
-        ("10..1", 1, 10),
-        ("-10..1.0", -10, 1.0),
-    ],
-)
-def test_num_range(range_str, expected_low, expected_high):
+def test_num_range(range_str, expected_low, expected_high, serialized):
     num_range = NumRange(root=range_str)
+    num_range_validated = NumRange.model_validate(range_str)
+    assert num_range == num_range_validated
     assert num_range.low == expected_low
     assert num_range.high == expected_high
-    num_range = NumRange.model_validate(range_str)
-    assert num_range.low == expected_low
-    assert num_range.high == expected_high
+    assert num_range.model_dump() == serialized
+    assert num_range.model_dump(context={"parsed": True}) == {
+        "low": expected_low,
+        "high": expected_high,
+    }
 
 
 @pytest.mark.parametrize(
-    "tolerance_str, expected_value, expected_tolerance",
+    "tolerance_str, expected_value, expected_tolerance, serialized",
     [
-        ("100|5", 100, 5),
-        ("-100.5|0.03", -100.5, 0.03),
+        (
+            "100 |  5",
+            100,
+            5,
+            "100|5",
+        ),
+        ("-100.5|0.03", -100.5, 0.03, "-100.5|0.03"),
     ],
 )
-def test_num_tolerance(tolerance_str, expected_value, expected_tolerance):
+def test_num_tolerance(tolerance_str, expected_value, expected_tolerance, serialized):
     num_tolerance = NumTolerance(root=tolerance_str)
+    num_tolerance_validated = NumTolerance.model_validate(tolerance_str)
+
+    assert num_tolerance == num_tolerance_validated
     assert num_tolerance.value == expected_value
     assert num_tolerance.tolerance == expected_tolerance
-    num_range = NumTolerance.model_validate(tolerance_str)
-    assert num_range.value == expected_value
-    assert num_range.tolerance == expected_tolerance
+    assert num_tolerance_validated.model_dump() == serialized
+    assert num_tolerance_validated.model_dump(context={"parsed": True}) == {
+        "value": expected_value,
+        "tolerance": expected_tolerance,
+    }
 
 
-def test_integer():
-    value = 42
-    assert value == Integer(root=value).value
-    assert value == Integer.model_validate(value).value
-    assert value == Integer.model_validate(value).model_dump()
+@pytest.mark.parametrize(["value", "model"], [(4, Integer), ("answer", ShortAnswer)])
+def test_value_models(value, model):
+    instantiated = model(root=value)
+    validated = model.model_validate(value)
+    assert value == instantiated.value == validated.value
+    assert value == instantiated.model_dump()
+    assert {"value": value} == instantiated.model_dump(context={"parsed": True})
 
 
-def test_short_answer():
-    value = "This is a short answer"
-    assert value == ShortAnswer(root=value).value
-    assert value == ShortAnswer.model_validate(value).value
-    assert value == ShortAnswer.model_validate(value).model_dump()
-
-
-# Parameterized tests for single and multiple correct choices
 @pytest.mark.parametrize(
     "choices, n_correct, n_incorrect",
     [
@@ -228,7 +195,6 @@ def test_choice_groups(choices, n_correct, n_incorrect):
         assert multiple_choices.n_incorrect == n_incorrect
 
 
-# Tests for other models
 @pytest.mark.parametrize(
     "model_fixture, expected_marks",
     [
@@ -241,7 +207,6 @@ def test_models(model_fixture, expected_marks, request):
     assert model.marks == expected_marks
 
 
-# Test serialization of Queck
 def test_queck_serialization(queck_fixture):
     queck = queck_fixture
     assert queck.title == "Sample Quiz"
