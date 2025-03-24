@@ -1,0 +1,54 @@
+Do not modify any info or correct any mistakes from the actual text.
+Extract the below quiz questions in the required output json format.
+Ensure text contents are in markdown format if it is in any other format
+like latex or html convert it into markdown.
+
+Use $ for inline math and $$ for display style math.
+Convert any \( \) or \[ \] math blocks to $...$ and $$...$$ blocks respectively.
+Use single backtics for ` for inline code and variables names.
+Use triple backtics ``` for code blocks. Do not inline code blocks.
+
+
+For choice based questions only extract the content not the order indicators
+like a), b), c) or 1. 2. 3. and ensure choices are inside answers in the json
+Ensure that all the choices are marked correct or wrong according to the question.
+
+common data questions will have text and questions nested.
+
+Relavent structures:
+
+Choice:
+  text: str
+  feedback: str = ""
+  is_correct: bool
+
+Range:
+  low: int | float
+  high: int | float
+
+Tolerance:
+  value: int|float
+  tolerance: int|float
+
+
+Answer:
+  value: [int|str|bool|list[Choice]|Range|Tolerance]
+  type: Literal['num_int', 'short_answer', 'true_false', 'single_correct_choice', 'multiple_correct_choices', 'num_range', 'num_tolerance']
+
+Question:
+  text: str
+  answer: Answer
+  feedback: str = ""
+  marks: int | float = 0
+  tags: list[str] = []
+
+CommonDataQuestion:
+  text: str
+  questions : list[Question]
+
+Description:
+    text: str
+
+Quiz:
+  title: str
+  questions: list[Question|CommonDataQuestion|Description]

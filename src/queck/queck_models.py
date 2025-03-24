@@ -153,9 +153,12 @@ class CommonDataQuestion(QuestionBase):
 
     @property
     def marks(self) -> int:
-        return sum(
+        m = sum(
             question.marks for question in self.questions if hasattr(question, "marks")
         )
+        if int(m) == m:
+            return int(m)
+        return m
 
 
 class Queck(BaseModel):
@@ -178,9 +181,12 @@ class Queck(BaseModel):
 
     @property
     def marks(self) -> int:
-        return sum(
+        m = sum(
             question.marks for question in self.questions if hasattr(question, "marks")
         )
+        if int(m) == m:
+            return int(m)
+        return m
 
     @classmethod
     def from_queck(cls, queck_str: str):

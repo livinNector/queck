@@ -5,6 +5,7 @@ from typing import Literal
 import fire
 from watchfiles import awatch
 
+from .extract import extract_queck
 from .live_server import LiveServer
 from .queck_models import Queck
 
@@ -18,6 +19,9 @@ class QueckCli:
     def format(self, *queck_files):
         for queck_file in queck_files:
             Queck.read_queck(queck_file).to_queck(queck_file)
+
+    def extract(self, file_name, model=None):
+        extract_queck(file_name, model).to_queck(file_name)
 
     def export(
         self,

@@ -15,6 +15,26 @@ class RefAdderJsonSchema(GenerateJsonSchema):
         )
 
 
+def remove_defaults(json_obj):
+    if isinstance(json_obj, dict):
+        return {
+            key: remove_defaults(value) if isinstance(value, (dict, list)) else value
+            for key, value in json_obj.items()
+            if key != "default"
+        }
+    if isinstance(json_obj, list):
+        return [
+            remove_defaults(value) if isinstance(value, (dict, list)) else value
+            for value in json_obj
+        ]
+
+
+class NoDefaultJsonSchema(GenerateJsonSchema):
+    def generate(self, schema, mode="validation"):
+        schema = super().generate(schema, mode)
+        return remove_defaults(schema)
+
+
 MDStr = Annotated[
     str,
     AfterValidator(

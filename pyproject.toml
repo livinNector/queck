@@ -36,6 +36,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
 "queck.templates" = ["*"]
+"queck.prompts" = ["*"]
 
 [project.scripts]
 queck = "queck.cli:main"

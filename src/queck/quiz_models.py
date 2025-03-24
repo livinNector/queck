@@ -9,12 +9,12 @@ from pydantic import (
     RootModel,
     SerializationInfo,
     SerializerFunctionWrapHandler,
-    TypeAdapter,
     model_serializer,
     model_validator,
 )
 
 from .answer_models import AnswerType, format_choice
+from .model_utils import Number, NumberAdapter
 
 MDStr = Annotated[
     str, AfterValidator(lambda x: mdformat.text(x, options={"wrap": 70}).rstrip())
@@ -86,20 +86,17 @@ class Choices(RootModel):
         return value
 
 
-Num = int | float
-NumAdapter = TypeAdapter(Num)
-
 
 class NumRange(FormattedModel):
-    high: Num
-    low: Num
+    high: Number
+    low: Number
     format: ClassVar[str] = "{low}..{high}"
 
     @model_validator(mode="before")
     @classmethod
     def parse(cls, value):
         if isinstance(value, str):
-            low, high = sorted(map(NumAdapter.validate_python, value.split("..")))
+            low, high = sorted(map(NumberAdapter.validate_python, value.split("..")))
             return {"high": high, "low": low}
         elif isinstance(value, dict):
             return value
@@ -108,15 +105,15 @@ class NumRange(FormattedModel):
 
 
 class NumTolerance(FormattedModel):
-    value: Num
-    tolerance: Num
+    value: Number
+    tolerance: Number
     format: ClassVar[str] = "{value}|{tolerance}"
 
     @model_validator(mode="before")
     @classmethod
     def parse(cls, value):
         if isinstance(value, str):
-            value, low = map(NumAdapter.validate_python, value.split("|"))
+            value, low = map(NumberAdapter.validate_python, value.split("|"))
             return {"value": value, "tol": low}
         elif isinstance(value, dict):
             return value
