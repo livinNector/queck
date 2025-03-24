@@ -21,9 +21,9 @@
 {%- elif answer.type == "num_int" %}
 **Answer:** ${{ answer.value }}$
 {%- elif answer.type == "num_range" %}
-**Answer:** ${{ answer.low }}$ to ${{ answer.high }}$
+**Answer:** ${{ answer.value.low }}$ to ${{ answer.value.high }}$
 {%- elif answer.type == "num_tolerance" %}
-**Answer:** ${{ answer.value }}$ ± ${{ answer.tolerance }}$
+**Answer:** ${{ answer.value.value }}$ ± ${{ answer.value.tolerance }}$
 {%- elif answer.type == "short_answer" %}
 **Answer:** {{ answer.value }}
 {%- endif %}

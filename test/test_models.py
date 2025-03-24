@@ -74,9 +74,9 @@ def queck_fixture():
             False,
         ),
         (
-            "(x) Correct Choice Line 1\nLine 2 // Explanation Line 1\nLine 2",
-            "Correct Choice Line 1\nLine 2",
-            "Explanation Line 1\nLine 2",
+            "(x) Correct Choice Line 1  \nLine 2 // Explanation Line 1  \nLine 2",
+            "Correct Choice Line 1\\\nLine 2",
+            "Explanation Line 1\\\nLine 2",
             True,
         ),
         ("( )\nCorrect Choice\n// Explanation", "Correct Choice", "Explanation", False),
@@ -104,10 +104,10 @@ def test_choices(choice_str, expected_text, expected_feedback, is_correct):
     assert instantiated.text == expected_text
     assert instantiated.feedback == expected_feedback
     assert instantiated.is_correct == is_correct
-    assert instantiated.model_dump(context={"parsed":True})  == {
+    assert instantiated.model_dump(context={"parsed": True}) == {
         "text": expected_text,
         "feedback": expected_feedback,
-        "is_correct": is_correct
+        "is_correct": is_correct,
     }
 
 
@@ -123,12 +123,15 @@ def test_num_range(range_str, expected_low, expected_high, serialized):
     num_range = NumRange(root=range_str)
     num_range_validated = NumRange.model_validate(range_str)
     assert num_range == num_range_validated
-    assert num_range.low == expected_low
-    assert num_range.high == expected_high
+    assert num_range.value.low == expected_low
+    assert num_range.value.high == expected_high
     assert num_range.model_dump() == serialized
     assert num_range.model_dump(context={"parsed": True}) == {
-        "low": expected_low,
-        "high": expected_high,
+        "value": {
+            "low": expected_low,
+            "high": expected_high,
+        },
+        "type": "num_range",
     }
 
 
@@ -149,22 +152,30 @@ def test_num_tolerance(tolerance_str, expected_value, expected_tolerance, serial
     num_tolerance_validated = NumTolerance.model_validate(tolerance_str)
 
     assert num_tolerance == num_tolerance_validated
-    assert num_tolerance.value == expected_value
-    assert num_tolerance.tolerance == expected_tolerance
+    assert num_tolerance.value.value == expected_value
+    assert num_tolerance.value.tolerance == expected_tolerance
     assert num_tolerance_validated.model_dump() == serialized
     assert num_tolerance_validated.model_dump(context={"parsed": True}) == {
-        "value": expected_value,
-        "tolerance": expected_tolerance,
+        "value": {
+            "value": expected_value,
+            "tolerance": expected_tolerance,
+        },
+        "type": "num_tolerance",
     }
 
 
-@pytest.mark.parametrize(["value", "model"], [(4, Integer), ("answer", ShortAnswer)])
-def test_value_models(value, model):
+@pytest.mark.parametrize(
+    ["value", "model", "type"],
+    [(4, Integer, "num_int"), ("answer", ShortAnswer, "short_answer")],
+)
+def test_value_models(value, model, type):
     instantiated = model(root=value)
     validated = model.model_validate(value)
     assert value == instantiated.value == validated.value
     assert value == instantiated.model_dump()
-    assert {"value": value} == instantiated.model_dump(context={"parsed": True})
+    assert {"value": value, "type": type} == instantiated.model_dump(
+        context={"parsed": True}
+    )
 
 
 @pytest.mark.parametrize(

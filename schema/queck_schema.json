@@ -110,17 +110,25 @@
       "type": "array"
     },
     "NumRange": {
+      "$ref": "#/$defs/NumRangeRoot",
+      "title": "NumRange"
+    },
+    "NumRangeRoot": {
       "default": "",
       "description": "Numerical range based answer.\n\nFormat: `{low}..{high}`.\n\n    - `low` and `high` are numerical values representing the\n    range boundaries.\n\nBoth `low` and `high` can be integer or floating point types.",
       "pattern": "^\\s*(?<low>-?\\d*\\.?\\d*)\\s*\\.\\.\\s*(?<high>-?\\d*\\.?\\d*)\\s*",
-      "title": "NumRange",
+      "title": "NumRangeRoot",
       "type": "string"
     },
     "NumTolerance": {
+      "$ref": "#/$defs/NumToleranceRoot",
+      "title": "NumTolerance"
+    },
+    "NumToleranceRoot": {
       "default": "",
       "description": "Numerical answer with tolerance.\n\nFormat: `{val}|{tolerance}`\n\n    - `val` is the base value.\n    - `tolerance` specifies the allowable deviation.\n\nBoth `val` and `tolerance` can be integer or floating point types.",
       "pattern": "^\\s*(?<value>-?\\d*\\.?\\d*)\\s*\\|\\s*(?<tolerance>-?\\d*\\.?\\d*)$",
-      "title": "NumTolerance",
+      "title": "NumToleranceRoot",
       "type": "string"
     },
     "Question": {
@@ -181,10 +189,17 @@
           "title": "Answer"
         },
         "feedback": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "default": "",
           "description": "Optional feedback or explanation for the question. Can include solutions, hints, or clarifications.",
-          "title": "Feedback",
-          "type": "string"
+          "title": "Feedback"
         },
         "marks": {
           "anyOf": [
@@ -193,6 +208,9 @@
             },
             {
               "type": "number"
+            },
+            {
+              "type": "null"
             }
           ],
           "default": 0,

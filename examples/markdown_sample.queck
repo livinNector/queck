@@ -1,15 +1,22 @@
 title: Markdown checker
 questions:
-  - text: |
+  - text: |-
       ## Headers
+
       # H1 Header
+
       ## H2 Header
-      ### H3 Header 
+
+      ### H3 Header
+
       #### H4 Header
+
       ##### H5 Header
+
       ###### H6 Header
 
       ## Text Styles
+
       **Bold Text**
 
       *Italic Text*
@@ -19,31 +26,40 @@ questions:
       ~~Strikethrough Text~~
 
       ## Blockquotes
+
       > This is a blockquote.
+      >
       > > This is a nested one within that.
 
       ## Lists
+
       ### Unordered List
+
       - Item 1
         - Subitem 1.1
         - Subitem 1.2
       - Item 2
 
       ### Ordered List
+
       1. First item
-      2. Second item
-      3. Third item
-        1. Subitem 3.1
-        2. Subitem 3.2
+      1. Second item
+      1. Third item
+      1. Subitem 3.1
+      1. Subitem 3.2
 
       ## Links
+
       [GitHub](https://github.com)
 
       ## Images
+
       ![GitHub Logo](https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png)
 
       ## Code
+
       ### Inline Code
+
       Here is some `inline code`.
 
       ### Code Block
@@ -71,32 +87,42 @@ questions:
       | in each    |    column    |         row |
 
       ## Horizontal Rule
-      ---
+
+      ______________________________________________________________________
+
       ## Task List
+
       - [x] Task 1
       - [ ] Task 2
       - [ ] Task 3
 
       ## Math Expressions
+
       ### Inline Math
+
       Inline math expression: $E = mc^2$.
 
       ### Display Math
+
       $$
       \int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
       $$
 
-
       ## HTML
+
       ### HTML Tags
+
       <p>This is a paragraph written in HTML.</p>
 
       <a href="https://www.github.com">GitHub link using HTML</a>
 
       ## Nested Lists
+
       1. First item
-        - Subitem 1
-          - Sub-subitem 1
+
+      - Subitem 1
+        - Sub-subitem 1
+
       2. Second item
-        1. Subitem 2.1
-        2. Subitem 2.2
+      1. Subitem 2.1
+      1. Subitem 2.2

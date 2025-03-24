@@ -155,5 +155,17 @@
       "    $0"
     ],
     "description": "Question with number with multiple choice answer with three correct options"
+  },
+  "Hint": {
+    "scope": "yaml",
+    "prefix": "hint",
+    "body": [
+      "<details>",
+      "<summary>${1:Hint}</summary>",
+      "${2: Sample hint}",
+      "</details>",
+      "$0"
+    ],
+    "description": "Details summary"
   }
 }

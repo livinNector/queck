@@ -1,7 +1,7 @@
 import abc
 import re
 from dataclasses import dataclass
-from typing import Annotated, ClassVar, Literal, TypeVar
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import (
     Field,
@@ -11,6 +11,8 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
+
+from .model_utils import MDStrAdapter, NumberAdapter, T
 
 AnswerType = Literal[
     "single_correct_choice",
@@ -23,9 +25,34 @@ AnswerType = Literal[
     "none",
 ]
 
-Number = int | float
 
-NumberAdapter = TypeAdapter(Number)
+@dataclass
+class Answer[T]:
+    value: T
+    type: AnswerType
+
+
+class AnswerModel(RootModel[T]):
+    """Same as RootModel but adds and alias value to root attribute of root model."""
+
+    type: ClassVar[str]
+
+    @property
+    def value(self):
+        """Alias for root."""
+        return self.root
+
+    @value.setter
+    def value(self, value):
+        self.root = value
+
+    @model_serializer(mode="plain")
+    def ser_parsed(self, info: SerializationInfo) -> T | Answer[T]:
+        context = info.context
+        if context is not None and context.get("parsed", False):
+            return Answer(value=self.value, type=self.type)
+        else:
+            return self.root
 
 
 def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
@@ -37,51 +64,93 @@ class PatternStringBase(abc.ABC, RootModel):
 
     pattern: ClassVar[str]
     format: ClassVar[str] = ""
-    serialize_attrs: ClassVar[list[str]]  # used when serialzed in dict mode.
+    parsed_attrs: ClassVar[list[str]]  # used when serialzed in parsed mode.
 
     @model_validator(mode="after")
     def cache_groups(self):
         self._groups = re.match(self.pattern, self.root).groupdict()
         self.postprocess_groups()
+        self.cache_groups
         return self
 
     @model_serializer(mode="plain")
     def ser_parsed(self, info: SerializationInfo) -> str | dict:
         context = info.context
         if context is not None and context.get("parsed", False):
-            return {attr: getattr(self, attr) for attr in self.serialize_attrs}
+            return {attr: getattr(self, attr) for attr in self.parsed_attrs}
         else:
-            return self.format.format(**self._groups)
+            return self.formatted
+
+    @property
+    def formatted(self):
+        assert self.format, "Class Variable format should be defined."
+        return self.format.format(**self._groups)
 
     def postprocess_groups(self):
-        if self.format:
-            assert hasattr(
-                self, "_groups"
-            ), "postprocess_groups should be called after extracting the groups"
-            self.root = self.format.format(**self._groups)
+        assert hasattr(self, "_groups"), (
+            "postprocess_groups should be called after extracting the groups"
+        )
+        self.root = self.formatted
 
     def get_group(self, name):
         return self._groups[name]
 
+    @staticmethod
+    def group_getter(name):
+        def inner(self):
+            return self._groups[name]
+
+        return inner
+
+    @staticmethod
+    def group_setter(name):
+        def inner(self, value):
+            self._groups[name] = value
+
+        return inner
+
+    @staticmethod
+    def group_property(name):
+        return property(
+            PatternStringBase.group_getter(name), PatternStringBase.group_setter(name)
+        )
+
+
+def format_choice(is_correct, text, feedback):
+    mark = "x" if is_correct else " "
+    result = "({mark}) {text}".format(mark=mark, text=text)
+    if feedback:
+        if "\n" in feedback or "\n" in text:
+            result += "\n// {}".format(feedback)
+        else:
+            result += " // {}".format(feedback)
+    return result
+
 
 class ChoiceBase(PatternStringBase):
-    serialize_attrs: ClassVar[list[str]] = [
+    is_correct: ClassVar[bool]
+    parsed_attrs: ClassVar[list[str]] = [
         "is_correct",
         "text",
         "feedback",
     ]
 
-    @property
-    def text(self):
-        return self.get_group("text").strip()
+    def postprocess_groups(self):
+        self._groups["text"] = MDStrAdapter.validate_python(
+            self._groups["text"].strip()
+        )
+        if self._groups["feedback"] is not None:
+            self._groups["feedback"] = MDStrAdapter.validate_python(
+                self._groups["feedback"].strip()
+            )
+        return super().postprocess_groups()
 
     @property
-    def feedback(self):
-        feedback = self.get_group("feedback")
-        if feedback is not None:
-            return feedback.strip()
-        else:
-            return ""
+    def formatted(self):
+        return format_choice(self.is_correct, self.text, self.feedback)
+
+    text = PatternStringBase.group_property("text")
+    feedback = PatternStringBase.group_property("feedback")
 
 
 class CorrectChoice(ChoiceBase):
@@ -105,7 +174,6 @@ class CorrectChoice(ChoiceBase):
     """
 
     is_correct: ClassVar[bool] = True
-    format: ClassVar[str] = "(x) {text} // {feedback}"
     pattern: ClassVar[str] = (
         r"\(x\) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$"
     )
@@ -133,7 +201,6 @@ class IncorrectChoice(ChoiceBase):
     """
 
     is_correct: ClassVar[bool] = False
-    format: ClassVar[str] = "( ) {text} // {feedback}"
     pattern: ClassVar[str] = (
         r"\( \) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$"
     )
@@ -144,9 +211,14 @@ correct_choice_adapter = TypeAdapter(CorrectChoice)
 incorrect_choice_adapter = TypeAdapter(IncorrectChoice)
 
 
-class ChoicesBase(RootModel):
+class ChoicesBase(AnswerModel):
+    root: list[CorrectChoice | IncorrectChoice]
+
     def __getitem__(self, item):
         return self.root[item]
+
+    def __setitem__(self, item, value):
+        self.root[item] = value
 
     def __iter__(self):
         return iter(self.root)
@@ -230,53 +302,28 @@ MultipleChoiceAnswer = Annotated[
 ]
 
 
-T = TypeVar("T")
-
-
-@dataclass
-class Value[T]:
-    value: T
-
-
-class ValueModel(RootModel[T]):
-    """Same as RootModel but adds and alias value to root attribute of root model."""
-
-    @property
-    def value(self):
-        """Alias for root."""
-        return self.root
-
-    @model_serializer(mode="plain")
-    def ser_parsed(self, info: SerializationInfo) -> T | Value[T]:
-        context = info.context
-        if context is not None and context.get("parsed", False):
-            return Value(value=self.value)
-        else:
-            return self.root
-
-
-class ShortAnswer(ValueModel):
+class ShortAnswer(AnswerModel):
     """Text based answer."""
 
     type: ClassVar[AnswerType] = "short_answer"
     root: str
 
 
-class TrueOrFalse(ValueModel):
+class TrueOrFalse(AnswerModel):
     """True or false answer."""
 
     type: ClassVar[AnswerType] = "true_false"
     root: bool
 
 
-class Integer(ValueModel):
+class Integer(AnswerModel):
     """Numerical integer answer."""
 
     type: ClassVar[AnswerType] = "num_int"
     root: int
 
 
-class NumRange(PatternStringBase):
+class NumRangeRoot(PatternStringBase):
     """Numerical range based answer.
 
     Format: `{low}..{high}`.
@@ -287,12 +334,11 @@ class NumRange(PatternStringBase):
     Both `low` and `high` can be integer or floating point types.
     """
 
-    type: ClassVar[str] = "num_range"
     format: ClassVar[str] = "{low}..{high}"
     pattern: ClassVar[str] = (
         r"^\s*(?P<low>-?\d*\.?\d*)\s*\.\.\s*(?P<high>-?\d*\.?\d*)\s*"
     )
-    serialize_attrs: ClassVar[list[str]] = ["low", "high"]
+    parsed_attrs: ClassVar[list[str]] = ["low", "high"]
     root: str = PatternField(pattern=pattern)
 
     def postprocess_groups(self):
@@ -300,16 +346,16 @@ class NumRange(PatternStringBase):
             map(NumberAdapter.validate_python, self._groups.values())
         )
 
-    @property
-    def low(self):
-        return self.get_group("low")
-
-    @property
-    def high(self):
-        return self.get_group("high")
+    low = PatternStringBase.group_property("low")
+    high = PatternStringBase.group_property("high")
 
 
-class NumTolerance(PatternStringBase):
+class NumRange(AnswerModel):
+    type: ClassVar[str] = "num_range"
+    root: NumRangeRoot
+
+
+class NumToleranceRoot(PatternStringBase):
     """Numerical answer with tolerance.
 
     Format: `{val}|{tolerance}`
@@ -320,12 +366,11 @@ class NumTolerance(PatternStringBase):
     Both `val` and `tolerance` can be integer or floating point types.
     """
 
-    type: ClassVar[str] = "num_tolerance"
-    format: ClassVar[str] ="{value}|{tolerance}"
+    format: ClassVar[str] = "{value}|{tolerance}"
     pattern: ClassVar[str] = (
         r"^\s*(?P<value>-?\d*\.?\d*)\s*\|\s*(?P<tolerance>-?\d*\.?\d*)$"
     )
-    serialize_attrs: ClassVar[list[str]] = ["value", "tolerance"]
+    parsed_attrs: ClassVar[list[str]] = ["value", "tolerance"]
     root: str = PatternField(pattern=pattern)
 
     def postprocess_groups(self):
@@ -334,10 +379,10 @@ class NumTolerance(PatternStringBase):
             self._groups["tolerance"]
         )
 
-    @property
-    def value(self):
-        return self.get_group("value")
+    value = PatternStringBase.group_property("value")
+    tolerance = PatternStringBase.group_property("tolerance")
 
-    @property
-    def tolerance(self):
-        return self.get_group("tolerance")
+
+class NumTolerance(AnswerModel):
+    type: ClassVar[str] = "num_tolerance"
+    root: NumToleranceRoot

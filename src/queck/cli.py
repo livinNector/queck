@@ -15,6 +15,10 @@ class QueckCli:
     Provides options to validate and export quizzes defined in YAML format.
     """
 
+    def format(self, *queck_files):
+        for queck_file in queck_files:
+            Queck.read_queck(queck_file).to_queck(queck_file)
+
     def export(
         self,
         *queck_files,

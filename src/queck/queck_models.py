@@ -1,19 +1,15 @@
 import abc
-import functools
 import io
 from functools import cached_property
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-import mdformat
-import yaml
 from pydantic import (
-    AfterValidator,
     BaseModel,
     ConfigDict,
     Field,
     StringConstraints,
-    computed_field,
 )
+from ruamel.yaml import YAML
 
 from .answer_models import (
     Integer,
@@ -25,12 +21,34 @@ from .answer_models import (
     SingleCorrectChoice,
     TrueOrFalse,
 )
+from .model_utils import MDStr
 from .render_utils import templates
-from .utils import write_file
+from .utils import Merger, write_file
 
-MDStr = Annotated[
-    str, AfterValidator(lambda x: mdformat.text(x, options={"wrap": 70}).rstrip())  # noqa: F821
-]
+yaml = YAML(typ="rt", plug_ins=[])
+yaml.default_flow_style = False
+yaml.indent(mapping=2, sequence=4, offset=2)
+
+
+def _str_presenter(dumper, data):
+    """Preserve multiline strings when dumping yaml.
+
+    https://github.com/yaml/pyyaml/issues/240
+    """
+    if "\n" in data:
+        # Remove trailing spaces messing out the output.
+        block = "\n".join([line.rstrip() for line in data.splitlines()])
+        if data.endswith("\n"):
+            block += "\n"
+        return dumper.represent_scalar("tag:yaml.org,2002:str", block, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+yaml.representer.add_representer(str, _str_presenter)
+
+
+def load_yaml(content):
+    return yaml.load(content)
 
 
 QuestionType = Literal[
@@ -89,12 +107,12 @@ class Question(QuestionBase):
         | NumTolerance
         | ShortAnswer
     )
-    feedback: str = Field(
+    feedback: MDStr | None = Field(
         default="",
         description="Optional feedback or explanation for the question. "
         "Can include solutions, hints, or clarifications.",
     )
-    marks: int | float = Field(
+    marks: int | float | None = Field(
         default=0,
         description="The marks assigned to this question. Defaults to 0.",
     )
@@ -102,7 +120,6 @@ class Question(QuestionBase):
         default_factory=list, description="A list of tags categorizing the question."
     )
 
-    @computed_field
     @cached_property
     def type(self) -> QuestionType:
         match self.answer:
@@ -134,10 +151,11 @@ class CommonDataQuestion(QuestionBase):
         description="A list of questions related to the common data.",
     )
 
-    @computed_field
     @property
     def marks(self) -> int:
-        return sum(question.marks for question in self.questions)
+        return sum(
+            question.marks for question in self.questions if hasattr(question, "marks")
+        )
 
 
 class Queck(BaseModel):
@@ -156,6 +174,31 @@ class Queck(BaseModel):
         description="A collection of questions, "
         "which may include standalone questions or common-data questions.",
     )
+    _yaml_content: Any | None = None
+
+    @property
+    def marks(self) -> int:
+        return sum(
+            question.marks for question in self.questions if hasattr(question, "marks")
+        )
+
+    @classmethod
+    def from_queck(cls, queck_str: str):
+        """Loads and validates the queck YAML string.
+
+        Args:
+            queck_str(str): the queck YAML string.
+
+        Returns:
+            Quiz: Validated Quiz object if successful.
+
+        Raises:
+            ValidationError: if validation is not successfull
+        """
+        yaml_content = load_yaml(queck_str)
+        result = cls.model_validate(yaml_content)
+        result._yaml_content = yaml_content
+        return result
 
     @classmethod
     def read_queck(cls, queck_file):
@@ -171,56 +214,53 @@ class Queck(BaseModel):
             ValidationError: if validation is not successfull
         """
         with open(queck_file, "r") as f:
-            return cls.model_validate(yaml.safe_load(f))
+            return cls.from_queck(f.read())
 
-    @classmethod
-    def from_queck(cls, queck_str: str):
-        """Loads and validates the queck YAML string.
+    def to_queck(self, file_name: str = None):
+        result = io.StringIO()
+        if self._yaml_content is None:
+            yaml.dump(self.model_dump(exclude_defaults=True), result)
+        else:
+            Merger(extend_lists=True, extend_dicts=False).merge(
+                self._yaml_content, self.model_dump(exclude_defaults=True)
+            )
+            yaml.dump(self._yaml_content, result)
+        result = result.getvalue()
+        if file_name:
+            write_file(file_name, result, format="queck")
+        else:
+            return result
 
-        Args:
-            queck_str(str): the queck YAML string.
+    def to_json(
+        self,
+        file_name: str = None,
+        parsed: bool = False,
+    ):
+        result = self.model_dump_json(indent=2, context={"parsed": parsed})
+        if file_name:
+            write_file(file_name, result, format="json")
+        else:
+            return result
 
-        Returns:
-            Quiz: Validated Quiz object if successful.
+    def to_md(self, file_name: str = None):
+        result = templates["md"].render(quiz=self)
+        if file_name:
+            write_file(file_name, result, format="md")
+        else:
+            return result
 
-        Raises:
-            ValidationError: if validation is not successfull
-        """
-        return cls.model_validate(yaml.safe_load(io.StringIO(queck_str)))
-
-    @staticmethod
-    def write_file_wrapper(format):
-        def wrapper(func):
-            @functools.wraps(func)
-            def inner(self, file_name: str = None, *args, **kwargs) -> None:
-                if file_name:
-                    write_file(file_name, func(self, *args, **kwargs), format)
-                    return
-                return func(self)
-
-            return inner
-
-        return wrapper
-
-    @write_file_wrapper("yaml")
-    def to_queck(self):
-        return yaml.safe_dump(self.model_dump())
-
-    @write_file_wrapper("json")
-    def to_json(self):
-        return self.model_dump_json(indent=2)
-
-    @write_file_wrapper("md")
-    def to_md(self):
-        return templates["md"].render(quiz=self)
-
-    @write_file_wrapper("html")
-    def to_html(self, render_mode: Literal["fast", "compat"] = "fast"):
+    def to_html(
+        self, file_name: str = None, render_mode: Literal["fast", "compat"] = "fast"
+    ):
         assert render_mode in [
             "fast",
             "compat",
         ], 'render_mode must be one of "fast" or "compat"'
-        return templates[render_mode].render(quiz=self)
+        result = templates[render_mode].render(quiz=self)
+        if file_name:
+            write_file(file_name, result, format="html")
+        else:
+            return result
 
     def export(
         self,

@@ -1,5 +1,55 @@
 {
   "$defs": {
+    "Answer": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Choices"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "$ref": "#/$defs/NumRange"
+            },
+            {
+              "$ref": "#/$defs/NumTolerance"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "type": {
+          "enum": [
+            "single_correct_choice",
+            "multiple_correct_choices",
+            "num_int",
+            "num_range",
+            "num_tolerance",
+            "short_answer",
+            "true_false",
+            "none"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Answer",
+      "type": "object"
+    },
     "Choice": {
       "properties": {
         "text": {
@@ -40,24 +90,13 @@
     "CommonDataQuestion": {
       "properties": {
         "questions": {
-          "description": "The list of questions relevant to the common data.",
           "items": {
             "$ref": "#/$defs/Question"
           },
           "title": "Questions",
           "type": "array"
         },
-        "type": {
-          "const": "com",
-          "default": "com",
-          "enum": [
-            "com"
-          ],
-          "title": "Type",
-          "type": "string"
-        },
         "text": {
-          "description": "The common data for questions",
           "title": "Text",
           "type": "string"
         }
@@ -67,6 +106,19 @@
         "text"
       ],
       "title": "CommonDataQuestion",
+      "type": "object"
+    },
+    "Description": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Description",
       "type": "object"
     },
     "NumRange": {
@@ -114,7 +166,7 @@
           ],
           "title": "Value"
         },
-        "tol": {
+        "tolerance": {
           "anyOf": [
             {
               "type": "integer"
@@ -123,12 +175,12 @@
               "type": "number"
             }
           ],
-          "title": "Tol"
+          "title": "Tolerance"
         }
       },
       "required": [
         "value",
-        "tol"
+        "tolerance"
       ],
       "title": "NumTolerance",
       "type": "object"
@@ -136,37 +188,11 @@
     "Question": {
       "properties": {
         "text": {
-          "description": "The statement of the question.",
           "title": "Text",
           "type": "string"
         },
         "answer": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Choices"
-            },
-            {
-              "type": "boolean"
-            },
-            {
-              "type": "integer"
-            },
-            {
-              "$ref": "#/$defs/NumRange"
-            },
-            {
-              "$ref": "#/$defs/NumTolerance"
-            },
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "One of the different answer types. Choices for mcq and msq. int, NumRange, NumTolerance for nat. string for short answer and bool for true or false.",
-          "title": "Answer"
+          "$ref": "#/$defs/Answer"
         },
         "feedback": {
           "anyOf": [
@@ -211,7 +237,8 @@
         }
       },
       "required": [
-        "text"
+        "text",
+        "answer"
       ],
       "title": "Question",
       "type": "object"
@@ -219,7 +246,6 @@
   },
   "properties": {
     "questions": {
-      "description": "List of questions or Comprehensions (Common data questions).",
       "items": {
         "anyOf": [
           {
@@ -227,6 +253,9 @@
           },
           {
             "$ref": "#/$defs/CommonDataQuestion"
+          },
+          {
+            "$ref": "#/$defs/Description"
           }
         ]
       },

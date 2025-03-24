@@ -1,35 +1,59 @@
-import functools
-import io
 import re
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import mdformat
-import yaml
 from pydantic import (
     AfterValidator,
     BaseModel,
     Field,
     RootModel,
+    SerializationInfo,
+    SerializerFunctionWrapHandler,
     TypeAdapter,
-    computed_field,
+    model_serializer,
     model_validator,
 )
 
-from .render_utils import templates
-from .utils import write_file
+from .answer_models import AnswerType, format_choice
 
 MDStr = Annotated[
     str, AfterValidator(lambda x: mdformat.text(x, options={"wrap": 70}).rstrip())
 ]
 
 
-class Choice(BaseModel):
+class FormattedModel(BaseModel):
+    format: ClassVar[str]
+
+    @property
+    def formatted(self) -> str:
+        value = self.model_dump()
+        if isinstance(value, dict):
+            return self.format.format(**value)
+        return value
+
+    @model_serializer(mode="wrap")
+    def ser_parsed(
+        self,
+        nxt: SerializerFunctionWrapHandler,
+        info: SerializationInfo,
+    ) -> str | Any:
+        context = info.context
+        if context is not None and context.get("formatted", False):
+            return self.formatted
+        return nxt(self)
+
+
+class Choice(FormattedModel):
     text: MDStr
     is_correct: bool
-    feedback: str | None = ""
+    feedback: MDStr | None = ""
     choice_regex: ClassVar[str] = re.compile(
         r"\((x| )\) *(.*?) *(// *(.*))?$", re.DOTALL
     )
+
+    @property
+    def formatted(self):
+        return format_choice(self.is_correct, self.text, self.feedback)
 
     @model_validator(mode="before")
     @classmethod
@@ -66,9 +90,10 @@ Num = int | float
 NumAdapter = TypeAdapter(Num)
 
 
-class NumRange(BaseModel):
+class NumRange(FormattedModel):
     high: Num
     low: Num
+    format: ClassVar[str] = "{low}..{high}"
 
     @model_validator(mode="before")
     @classmethod
@@ -82,9 +107,10 @@ class NumRange(BaseModel):
             raise ValueError("Not a str or dict")  # improve error message
 
 
-class NumTolerance(BaseModel):
+class NumTolerance(FormattedModel):
     value: Num
-    tol: Num
+    tolerance: Num
+    format: ClassVar[str] = "{value}|{tolerance}"
 
     @model_validator(mode="before")
     @classmethod
@@ -98,36 +124,39 @@ class NumTolerance(BaseModel):
             raise ValueError("Not a str or dict")
 
 
-AnswerType = Literal[
-    "single_correct",
-    "multiple_correct",
-    "num_int",
-    "num_range",
-    "num_tol",
-    "sa",
-    "true_false",
-    "none",
-]
 QuestionType = Literal["mcq", "msq", "nat", "sa", "desc"]
+
+
+class Answer(BaseModel):
+    value: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
+        union_mode="left_to_right", default=None
+    )
+    type: AnswerType
+
+    @model_serializer(mode="wrap")
+    def ser_parsed(
+        self, nxt: SerializerFunctionWrapHandler, info: SerializationInfo
+    ) -> str | Any:
+        context = info.context
+        if context is not None and context.get("formatted", False):
+            return self.value
+        return nxt(self)
 
 
 class Question(BaseModel):
     text: MDStr
-    answer: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
-        union_mode="left_to_right", default=None
-    )
+    answer: Answer
     feedback: str | None = ""
-    marks: int | None = 0
+    marks: int | float | None = 0
     tags: list[str] | None = Field(default_factory=list)
 
-    @computed_field
     @property
     def answer_type(self) -> AnswerType:
-        match self.answer:
+        match self.answer.value:
             case Choices(n_correct=1):
-                return "single_correct"
+                return "single_correct_choice"
             case Choices():
-                return "multiple_correct"
+                return "multiple_correct_choices"
             case bool():
                 return "true_false"
             case int():
@@ -135,11 +164,9 @@ class Question(BaseModel):
             case NumRange():
                 return "num_range"
             case NumTolerance():
-                return "num_tol"
+                return "num_tolerance"
             case str():
-                return "sa"
-            case None:
-                return "none"
+                return "short_answer"
 
     @property
     def type(self) -> QuestionType:
@@ -161,100 +188,22 @@ class QuestionGroup(BaseModel):
 
     questions: list[Question]
 
-    @computed_field
     @property
     def marks(self) -> int | None:
-        return sum(question.marks for question in self.questions)
+        return sum(
+            question.marks for question in self.questions if hasattr(question, "marks")
+        )
 
 
-class Comprehension(QuestionGroup):
-    type: Literal["comp"] = "comp"
+class CommonDataQuestion(QuestionGroup):
+    # type: Literal["common_data"] = "common_data"
+    text: MDStr
+
+
+class Description(BaseModel):
     text: MDStr
 
 
 class Quiz(QuestionGroup):
     title: str
-    questions: list[Question | Comprehension]
-
-    @classmethod
-    def read_queck(cls, queck_file):
-        """Loads and validates the queck YAML file.
-
-        Args:
-            queck_file (str): Path to the queck YAML file.
-
-        Returns:
-            Quiz: Validated Quiz object if successful.
-
-        Raises:
-            ValidationError: if validation is not successfull
-        """
-        with open(queck_file, "r") as f:
-            return cls.model_validate(yaml.safe_load(f))
-
-    @classmethod
-    def from_queck(cls, queck_str: str):
-        """Loads and validates the queck YAML string.
-
-        Args:
-            queck_str(str): the queck YAML string.
-
-        Returns:
-            Quiz: Validated Quiz object if successful.
-
-        Raises:
-            ValidationError: if validation is not successfull
-        """
-        return cls.model_validate(yaml.safe_load(io.StringIO(queck_str)))
-
-    @staticmethod
-    def write_file_wrapper(format):
-        def wrapper(func):
-            @functools.wraps(func)
-            def inner(self, file_name: str = None, *args, **kwargs) -> None:
-                if file_name:
-                    write_file(file_name, func(self, *args, **kwargs), format)
-                    return
-                return func(self)
-
-            return inner
-
-        return wrapper
-
-    @write_file_wrapper("yaml")
-    def to_queck(self):
-        return templates["queck"].render(quiz=self)
-
-    @write_file_wrapper("json")
-    def to_json(self):
-        return self.model_dump_json(indent=2)
-
-    @write_file_wrapper("md")
-    def to_md(self):
-        return templates["md"].render(quiz=self)
-
-    @write_file_wrapper("html")
-    def to_html(self, render_mode: Literal["fast", "compat"] = "fast"):
-        assert render_mode in [
-            "fast",
-            "compat",
-        ], 'render_mode must be one of "fast" or "compat"'
-        return templates[render_mode].render(quiz=self)
-
-    def export(
-        self,
-        output_file=None,
-        format: Literal["queck", "html", "md", "json"] = "html",
-        render_mode: Literal["fast", "compat"] = "fast",
-    ):
-        """Exports the quiz file to the required format."""
-        match format:
-            case "queck":
-                self.to_queck(output_file)
-            case "html":
-                self.to_html(output_file, render_mode=render_mode)
-            case "md":
-                self.to_md(output_file)
-            case "json":
-                self.to_json(output_file)
-        print(f"Quiz successfully exported to {output_file}")
+    questions: list[Question | CommonDataQuestion | Description]
