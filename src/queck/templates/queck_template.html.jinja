@@ -6,18 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{quiz.title}}</title>
   {%if render_mode== "fast"%}
-  {%include "katex_and_hljs_includes.html"%}
+  {%include "hljs_includes.html"%}
   {%endif%}
+  {%include "katex_includes.html"%}
   <script>
-    window.onload=()=>{
-        document.querySelectorAll('.contains-task-list input[type="checkbox"]').forEach((checkbox) => {
-          checkbox.onchange = () => {
-            checkbox.checked = checkbox.getAttribute('checked') === 'checked'
-          };
-        })
-      }
+    window.onload = () => {
+      document.querySelectorAll('.contains-task-list input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.onchange = () => {
+          checkbox.checked = checkbox.getAttribute('checked') === 'checked'
+        };
+      })
+    }
   </script>
-  
+
   <style>
     {% include 'style.css' %}
   </style>

@@ -25,6 +25,7 @@ def pygments_plugin(md):
             border-radius:5px;
             border: thin solid #ddd;
             margin-bottom:.5em;
+            font-size: large;
             """,
             prestyles="padding:0px; margin:0px;",
         )
