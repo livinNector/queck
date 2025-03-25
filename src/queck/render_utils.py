@@ -1,11 +1,17 @@
+from importlib.resources import files
+
 import css_inline
 from jinja2 import Environment, PackageLoader, select_autoescape
 from markdown_it import MarkdownIt
+from markdown_it.common.utils import escapeHtml
 from mdit_py_plugins.container import container_plugin
+from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
+
+from . import templates
 
 
 def pygments_plugin(md):
@@ -37,9 +43,15 @@ def pygments_plugin(md):
     md.add_render_rule("fence", render_code_block, fmt="html")
 
 
-def css_inline_plugin(md):
+def css_inline_plugin(md, css=""):
     render = md.render
-    md.render = lambda x: css_inline.inline(render(x))
+    md.render = lambda x: css_inline.inline_fragment(render(x), css=css)
+
+
+def dollor_math_renderer(content, config):
+    display_mode = config["display_mode"]
+    delimeter = "$$" if display_mode else "$"
+    return f"{delimeter}{escapeHtml(content)}{delimeter}"
 
 
 def get_base_md():
@@ -50,9 +62,17 @@ def get_base_md():
     )
 
 
+def get_fast_md():
+    return get_base_md().use(dollarmath_plugin, renderer=dollor_math_renderer)
+
+
+default_css = files(templates).joinpath("style.css").read_text()
 md = {}
-md["fast"] = get_base_md().render
-md["compat"] = get_base_md().use(pygments_plugin).use(css_inline_plugin).render
+md["base"] = get_base_md()
+md["fast"] = get_fast_md()
+md["compat"] = (
+    get_fast_md().use(pygments_plugin).use(css_inline_plugin, css=default_css)
+)
 
 
 def get_template_env(**filters):
@@ -67,9 +87,9 @@ def get_template_env(**filters):
 templates = {}
 templates["md"] = get_template_env().get_template("queck_template.md.jinja")
 templates["queck"] = get_template_env().get_template("queck_template.yaml.jinja")
-templates["fast"] = get_template_env(md=md["fast"]).get_template(
+templates["fast"] = get_template_env(md=md["fast"].render).get_template(
     "queck_template.html.jinja", globals={"render_mode": "fast", "format": "html"}
 )
-templates["compat"] = get_template_env(md=md["compat"]).get_template(
+templates["compat"] = get_template_env(md=md["compat"].render).get_template(
     "queck_template.html.jinja", globals={"format": "html"}
 )

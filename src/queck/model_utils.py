@@ -1,8 +1,10 @@
 from typing import Annotated, TypeVar
 
 import mdformat
-from pydantic import AfterValidator, Json, TypeAdapter
+from pydantic import AfterValidator, Json, TypeAdapter, WrapSerializer
 from pydantic.json_schema import GenerateJsonSchema
+
+from .render_utils import md
 
 JsonAdapter = TypeAdapter(Json)
 
@@ -35,6 +37,13 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
         return remove_defaults(schema)
 
 
+def md_render(value, handler, info):
+    if info.context and info.context.get("rendered", False):
+        renderer = info.context.get("renderer") or md["fast"]
+        return renderer.render(value)
+    return value
+
+
 MDStr = Annotated[
     str,
     AfterValidator(
@@ -42,6 +51,7 @@ MDStr = Annotated[
             x, options={"wrap": 80}, extensions={"gfm", "gfm_alerts", "myst"}
         ).rstrip()
     ),
+    WrapSerializer(md_render),
 ]
 
 MDStrAdapter = TypeAdapter(MDStr)
