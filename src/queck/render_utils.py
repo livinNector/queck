@@ -1,6 +1,7 @@
 from importlib.resources import files
 
 import css_inline
+import mdformat
 from jinja2 import Environment, PackageLoader, select_autoescape
 from markdown_it import MarkdownIt
 from markdown_it.common.utils import escapeHtml
@@ -12,6 +13,12 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
 
 from . import templates
+
+
+def md_format(text):
+    return mdformat.text(
+        text, options={"wrap": 80}, extensions={"gfm", "gfm_alerts", "myst"}
+    ).strip()
 
 
 def pygments_plugin(md):
@@ -85,11 +92,15 @@ def get_template_env(**filters):
 
 
 templates = {}
-templates["md"] = get_template_env().get_template("queck_template.md.jinja")
+templates["md"] = get_template_env(mdformat=md_format).get_template(
+    "queck_template.md.jinja"
+)
 templates["queck"] = get_template_env().get_template("queck_template.yaml.jinja")
-templates["fast"] = get_template_env(md=md["fast"].render).get_template(
+templates["fast"] = get_template_env(
+    md=md["fast"].render, mdformat=md_format
+).get_template(
     "queck_template.html.jinja", globals={"render_mode": "fast", "format": "html"}
 )
-templates["compat"] = get_template_env(md=md["compat"].render).get_template(
-    "queck_template.html.jinja", globals={"format": "html"}
-)
+templates["compat"] = get_template_env(
+    md=md["compat"].render, mdformat=md_format
+).get_template("queck_template.html.jinja", globals={"format": "html"})

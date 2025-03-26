@@ -1,14 +1,15 @@
 import pytest
 
 from queck.answer_models import (
-    CorrectChoice,
     IncorrectChoice,
     Integer,
-    MultipleCorrectChoices,
+    MultipleSelectChoices,
+    MultipleSelectCorrectChoice,
     NumRange,
     NumTolerance,
     ShortAnswer,
-    SingleCorrectChoice,
+    SingleSelectChoices,
+    SingleSelectCorrectChoice,
 )
 from queck.queck_models import (
     CommonDataQuestion,
@@ -90,12 +91,12 @@ def queck_fixture():
 )
 def test_choices(choice_str, expected_text, expected_feedback, is_correct):
     instantiated = (
-        CorrectChoice(root=choice_str)
+        MultipleSelectCorrectChoice(root=choice_str)
         if is_correct
         else IncorrectChoice(root=choice_str)
     )
     validated = (
-        CorrectChoice.model_validate(choice_str)
+        MultipleSelectCorrectChoice.model_validate(choice_str)
         if is_correct
         else IncorrectChoice.model_validate(choice_str)
     )
@@ -104,11 +105,14 @@ def test_choices(choice_str, expected_text, expected_feedback, is_correct):
     assert instantiated.text == expected_text
     assert instantiated.feedback == expected_feedback
     assert instantiated.is_correct == is_correct
-    assert instantiated.model_dump(context={"parsed": True}) == {
+    parsed = {
         "text": expected_text,
         "feedback": expected_feedback,
         "is_correct": is_correct,
+        "type": instantiated.type,
     }
+
+    assert instantiated.model_dump(context={"parsed": True}) == parsed
 
 
 @pytest.mark.parametrize(
@@ -183,7 +187,7 @@ def test_value_models(value, model, type):
     [
         (
             [
-                CorrectChoice(root="(x) Correct Answer"),
+                SingleSelectCorrectChoice(root="(o) Correct Answer"),
                 IncorrectChoice(root="( ) Incorrect Answer"),
             ],
             1,
@@ -191,8 +195,8 @@ def test_value_models(value, model, type):
         ),
         (
             [
-                CorrectChoice(root="(x) Correct Answer"),
-                CorrectChoice(root="(x) Another Correct Answer"),
+                MultipleSelectCorrectChoice(root="(x) Correct Answer"),
+                MultipleSelectCorrectChoice(root="(x) Another Correct Answer"),
                 IncorrectChoice(root="( ) Incorrect Answer"),
             ],
             2,
@@ -202,11 +206,11 @@ def test_value_models(value, model, type):
 )
 def test_choice_groups(choices, n_correct, n_incorrect):
     if n_correct == 1:
-        single_choice = SingleCorrectChoice(root=choices)
+        single_choice = SingleSelectChoices(root=choices)
         assert single_choice.n_correct == n_correct
         assert single_choice.n_incorrect == n_incorrect
     else:
-        multiple_choices = MultipleCorrectChoices(root=choices)
+        multiple_choices = MultipleSelectChoices(root=choices)
         assert multiple_choices.n_correct == n_correct
         assert multiple_choices.n_incorrect == n_incorrect
 

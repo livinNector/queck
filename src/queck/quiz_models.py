@@ -1,9 +1,6 @@
-import re
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Any, ClassVar
 
-import mdformat
 from pydantic import (
-    AfterValidator,
     BaseModel,
     Field,
     RootModel,
@@ -13,12 +10,8 @@ from pydantic import (
     model_validator,
 )
 
-from .answer_models import AnswerType, format_choice
-from .model_utils import Number, NumberAdapter
-
-MDStr = Annotated[
-    str, AfterValidator(lambda x: mdformat.text(x, options={"wrap": 70}).rstrip())
-]
+from .answer_models import AnswerType, ChoiceType, format_choice
+from .model_utils import MDStr, Number, NumberAdapter
 
 
 class FormattedModel(BaseModel):
@@ -32,7 +25,7 @@ class FormattedModel(BaseModel):
         return value
 
     @model_serializer(mode="wrap")
-    def ser_parsed(
+    def ser_formatted(
         self,
         nxt: SerializerFunctionWrapHandler,
         info: SerializationInfo,
@@ -43,32 +36,28 @@ class FormattedModel(BaseModel):
         return nxt(self)
 
 
-class Choice(FormattedModel):
+class Choice(BaseModel):
     text: MDStr
     is_correct: bool
-    feedback: MDStr | None = ""
-    choice_regex: ClassVar[str] = re.compile(
-        r"\((x| )\) *(.*?) *(// *(.*))?$", re.DOTALL
-    )
+    feedback: MDStr | None = None
+    type: ChoiceType | None = None
 
-    @property
-    def formatted(self):
-        return format_choice(self.is_correct, self.text, self.feedback)
-
-    @model_validator(mode="before")
-    @classmethod
-    def parse(cls, value):
-        if isinstance(value, str):
-            match = cls.choice_regex.match(value.strip())
-            return {
-                "text": match.group(2),
-                "is_correct": match.group(1) == "x",
-                "feedback": match.group(4),
-            }
-        elif isinstance(value, dict):
-            return value
+    @model_serializer(mode="wrap")
+    def ser_formatted(
+        self,
+        nxt: SerializerFunctionWrapHandler,
+        info: SerializationInfo,
+    ) -> str | Any:
+        context = info.context
+        if not self.is_correct:
+            mark = " "
+        elif self.type == "multi_select":
+            mark = "x"
         else:
-            raise ValueError("Choice not in correct format")
+            mark = "o"
+        if context is not None and context.get("formatted", False):
+            return format_choice(mark, self.text, self.feedback)
+        return nxt(self)
 
 
 class Choices(RootModel):
@@ -84,7 +73,6 @@ class Choices(RootModel):
         assert value.n_correct > 0, "Atleast one choice must be correct"
         assert value.n_correct < len(value.root), "All choices should not be correct"
         return value
-
 
 
 class NumRange(FormattedModel):
@@ -121,9 +109,6 @@ class NumTolerance(FormattedModel):
             raise ValueError("Not a str or dict")
 
 
-QuestionType = Literal["mcq", "msq", "nat", "sa", "desc"]
-
-
 class Answer(BaseModel):
     value: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
         union_mode="left_to_right", default=None
@@ -146,38 +131,6 @@ class Question(BaseModel):
     feedback: str | None = ""
     marks: int | float | None = 0
     tags: list[str] | None = Field(default_factory=list)
-
-    @property
-    def answer_type(self) -> AnswerType:
-        match self.answer.value:
-            case Choices(n_correct=1):
-                return "single_correct_choice"
-            case Choices():
-                return "multiple_correct_choices"
-            case bool():
-                return "true_false"
-            case int():
-                return "num_int"
-            case NumRange():
-                return "num_range"
-            case NumTolerance():
-                return "num_tolerance"
-            case str():
-                return "short_answer"
-
-    @property
-    def type(self) -> QuestionType:
-        match self.answer:
-            case Choices(n_correct=1) | bool():
-                return "mcq"  # multiple choice question
-            case Choices():
-                return "msq"  # multiple select question
-            case int() | NumRange() | NumTolerance():
-                return "nat"  # numerical answer type
-            case str():
-                return "sa"  # short answer
-            case None:
-                return "desc"  # description
 
 
 class QuestionGroup(BaseModel):

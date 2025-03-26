@@ -1,7 +1,7 @@
 import abc
 import re
 from dataclasses import dataclass
-from typing import Annotated, ClassVar, Literal
+from typing import ClassVar, Literal
 
 from pydantic import (
     Field,
@@ -15,8 +15,8 @@ from pydantic import (
 from .model_utils import MDStrAdapter, NumberAdapter, T
 
 AnswerType = Literal[
-    "single_correct_choice",
-    "multiple_correct_choices",
+    "single_select_choices",
+    "multiple_select_choices",
     "num_int",
     "num_range",
     "num_tolerance",
@@ -116,8 +116,7 @@ class PatternStringBase(abc.ABC, RootModel):
         )
 
 
-def format_choice(is_correct, text, feedback):
-    mark = "x" if is_correct else " "
+def format_choice(mark, text, feedback):
     result = "({mark}) {text}".format(mark=mark, text=text)
     if feedback:
         if "\n" in feedback or "\n" in text:
@@ -127,13 +126,20 @@ def format_choice(is_correct, text, feedback):
     return result
 
 
+def choice_pattern(mark):
+    return r"\({}\) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$".format(
+        mark
+    )
+
+
+ChoiceType = Literal["single_select", "multiple_select"]
+
+
 class ChoiceBase(PatternStringBase):
     is_correct: ClassVar[bool]
-    parsed_attrs: ClassVar[list[str]] = [
-        "is_correct",
-        "text",
-        "feedback",
-    ]
+    mark: ClassVar[str]
+    type: ClassVar[ChoiceType | None] = None
+    parsed_attrs: ClassVar[list[str]] = ["is_correct", "text", "feedback", "type"]
 
     def postprocess_groups(self):
         self._groups["text"] = MDStrAdapter.validate_python(
@@ -147,14 +153,45 @@ class ChoiceBase(PatternStringBase):
 
     @property
     def formatted(self):
-        return format_choice(self.is_correct, self.text, self.feedback)
+        return format_choice(self.mark, self.text, self.feedback)
 
     text = PatternStringBase.group_property("text")
     feedback = PatternStringBase.group_property("feedback")
 
 
-class CorrectChoice(ChoiceBase):
-    """Correct Choice in a multiple choice question.
+class SingleSelectCorrectChoice(ChoiceBase):
+    """Correct Choice in a single select question.
+
+    The mark resembles (o) radio button.
+
+    Format: `(o) {text} // {feedback}`
+        - `text` is the choice content
+        - `feedback` is optional and explains the correctness or
+        details about the choice
+
+    Both text and feedback can span multiple lines.
+
+    Examples:
+        - (o) correct choice // This is the correct answer
+        - (o) another correct choice
+        - |
+          (o) This is another correct choice
+          That can span muliple lines.
+          // This is going to be a multiline feedback
+          and this is the second line of the feedback
+    """
+
+    mark: ClassVar[str] = "o"
+    is_correct: ClassVar[bool] = True
+    type: ClassVar[ChoiceType | None] = "single_select"
+    pattern: ClassVar[str] = choice_pattern(mark)
+    root: str = PatternField(pattern=pattern)
+
+
+class MultipleSelectCorrectChoice(ChoiceBase):
+    """Correct Choice in a multiple select question.
+
+    The mark resembles checkboxes (x).
 
     Format: `(x) {text} // {feedback}`
         - `text` is the choice content
@@ -173,10 +210,10 @@ class CorrectChoice(ChoiceBase):
           and this is the second line of the feedback
     """
 
+    mark: ClassVar[str] = "x"
     is_correct: ClassVar[bool] = True
-    pattern: ClassVar[str] = (
-        r"\(x\) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$"
-    )
+    type: ClassVar[ChoiceType | None] = "multiple_select"
+    pattern: ClassVar[str] = choice_pattern(mark)
     root: str = PatternField(pattern=pattern)
 
 
@@ -200,19 +237,20 @@ class IncorrectChoice(ChoiceBase):
           and this is the second line of the feedback.
     """
 
+    mark: ClassVar[str] = " "
     is_correct: ClassVar[bool] = False
-    pattern: ClassVar[str] = (
-        r"\( \) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$"
-    )
+    pattern: ClassVar[str] = choice_pattern(mark)
     root: str = PatternField(pattern=pattern)
 
 
-correct_choice_adapter = TypeAdapter(CorrectChoice)
+correct_choice_adapter = TypeAdapter(MultipleSelectCorrectChoice)
 incorrect_choice_adapter = TypeAdapter(IncorrectChoice)
 
 
 class ChoicesBase(AnswerModel):
-    root: list[CorrectChoice | IncorrectChoice]
+    root: list[
+        MultipleSelectCorrectChoice | SingleSelectCorrectChoice | IncorrectChoice
+    ]
 
     def __getitem__(self, item):
         return self.root[item]
@@ -225,7 +263,13 @@ class ChoicesBase(AnswerModel):
 
     @property
     def n_correct(self):
-        return sum(1 for choice in self.root if isinstance(choice, CorrectChoice))
+        return sum(
+            1
+            for choice in self.root
+            if isinstance(
+                choice, (SingleSelectCorrectChoice, MultipleSelectCorrectChoice)
+            )
+        )
 
     @property
     def n_incorrect(self):
@@ -233,73 +277,65 @@ class ChoicesBase(AnswerModel):
 
 
 # manually defining json schema as contians is not included in pydantic yet.
-class SingleCorrectChoice(ChoicesBase):
-    """List of choices with one correct choice."""
+class SingleSelectChoices(ChoicesBase):
+    """List of choices with only one choice selectable and correct."""
 
-    type: ClassVar[AnswerType] = "single_correct_choice"
-    root: list[CorrectChoice | IncorrectChoice] = Field(
+    type: ClassVar[AnswerType] = "single_select_choices"
+    root: list[SingleSelectCorrectChoice | IncorrectChoice] = Field(
         json_schema_extra={
             "allOf": [
                 {
-                    "contains": {"ref": "#/$defs/CorrectChoice"},
+                    "contains": {"ref": "#/$defs/SingleSelectCorrectChoice"},
                     "minContains": 1,
                     "maxContains": 1,
-                    "errorMessage": "SingleCorrectChoice: Should contain "
+                    "errorMessage": "SingleCorrectChoices: Should contain "
                     "exactly one correct choice.",
                 },
-            ]
-        },
-    )
-
-    @model_validator(mode="after")
-    def check(self):
-        assert self.n_correct == 1 and self.n_incorrect > 0
-        return self
-
-
-class MultipleCorrectChoices(ChoicesBase):
-    """List of choices with multiple correct choices."""
-
-    type: ClassVar[AnswerType] = "multiple_correct_choices"
-    root: list[CorrectChoice | IncorrectChoice] = Field(
-        json_schema_extra={
-            "allOf": [
-                {
-                    "contains": {"ref": "#/$defs/CorrectChoice"},
-                    "minContains": 2,
-                    "errorMessage": "MultipleCorrectChoice: Should contain "
-                    "atleast two correct choices.",
-                },
-            ]
-        },
-    )
-
-    @model_validator(mode="after")
-    def check(self):
-        assert self.n_correct > 1 and self.n_incorrect > 0
-        return self
-
-
-MultipleChoiceAnswer = Annotated[
-    SingleCorrectChoice | MultipleCorrectChoices,
-    Field(
-        title="MultipleChoiceAnswer",
-        json_schema_extra={
-            "allOf": [
                 {
                     "contains": {"ref": "#/$defs/IncorrectChoice"},
                     "minContains": 1,
-                    "errorMessage": "Should contain atleast one incorrect choice.",
-                },
-                {
-                    "contains": {"ref": "#/$defs/CorrectChoice"},
-                    "minContains": 1,
-                    "errorMessage": "Should contain atleast one correct choice.",
+                    "errorMessage": "SingleCorrectChoices: Should contain "
+                    "atleast one incorrect choice.",
                 },
             ]
         },
-    ),
-]
+    )
+
+    @model_validator(mode="after")
+    def check(self):
+        assert self.n_correct == 1, "Should have exactly one correct answer."
+        assert self.n_incorrect > 0, "Should have one or more incorrect answers"
+        return self
+
+
+class MultipleSelectChoices(ChoicesBase):
+    """List of choices with one or more choices selectable and correct."""
+
+    type: ClassVar[AnswerType] = "multiple_select_choices"
+    root: list[MultipleSelectCorrectChoice | IncorrectChoice] = Field(
+        json_schema_extra={
+            "allOf": [
+                {
+                    "contains": {"ref": "#/$defs/MultipleSelectCorrectChoice"},
+                    "minContains": 1,
+                    "errorMessage": "MultipleSelectChoices: Should contain "
+                    "atleast one correct choice.",
+                },
+                {
+                    "contains": {"ref": "#/$defs/IncorrectChoice"},
+                    "minContains": 1,
+                    "errorMessage": "MultipleSelectChoices: Should contain "
+                    "atleast one incorrect choice.",
+                },
+            ]
+        },
+    )
+
+    @model_validator(mode="after")
+    def check(self):
+        assert self.n_correct > 0, "Should have one or more correct answers."
+        assert self.n_incorrect > 0, "Should have one or more incorrect answers."
+        return self
 
 
 class ShortAnswer(AnswerModel):

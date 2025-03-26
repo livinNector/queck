@@ -13,12 +13,11 @@ from ruamel.yaml import YAML
 
 from .answer_models import (
     Integer,
-    MultipleChoiceAnswer,
-    MultipleCorrectChoices,
+    MultipleSelectChoices,
     NumRange,
     NumTolerance,
     ShortAnswer,
-    SingleCorrectChoice,
+    SingleSelectChoices,
     TrueOrFalse,
 )
 from .model_utils import MDStr
@@ -52,7 +51,7 @@ def load_yaml(content):
 
 
 QuestionType = Literal[
-    "multiple_choice",
+    "single_select",
     "multiple_select",
     "numerical_answer",
     "short_answer",
@@ -100,7 +99,8 @@ class Question(QuestionBase):
         description="The statement or body of the question.",
     )
     answer: (
-        MultipleChoiceAnswer
+        SingleSelectChoices
+        | MultipleSelectChoices
         | TrueOrFalse
         | Integer
         | NumRange
@@ -123,9 +123,9 @@ class Question(QuestionBase):
     @cached_property
     def type(self) -> QuestionType:
         match self.answer:
-            case SingleCorrectChoice() | TrueOrFalse():
-                return "multiple_choice"
-            case MultipleCorrectChoices():
+            case SingleSelectChoices() | TrueOrFalse():
+                return "single_select"
+            case MultipleSelectChoices():
                 return "multiple_select"
             case ShortAnswer():
                 return "short_answer"

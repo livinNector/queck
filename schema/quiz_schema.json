@@ -31,8 +31,8 @@
         },
         "type": {
           "enum": [
-            "single_correct_choice",
-            "multiple_correct_choices",
+            "single_select_choices",
+            "multiple_select_choices",
             "num_int",
             "num_range",
             "num_tolerance",
@@ -69,8 +69,24 @@
               "type": "null"
             }
           ],
-          "default": "",
+          "default": null,
           "title": "Feedback"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "enum": [
+                "single_select",
+                "multiple_select"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
         }
       },
       "required": [
