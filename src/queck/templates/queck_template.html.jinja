@@ -18,10 +18,11 @@
       })
     }
   </script>
-
+  {%if render_mode== "fast"%}
   <style>
     {% include 'style.css' %}
   </style>
+  {%endif%}
   {# For Live reload #}
   <script>
     var ws = new WebSocket( // eslint-disable-line

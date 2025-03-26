@@ -52,7 +52,12 @@ def pygments_plugin(md):
 
 def css_inline_plugin(md, css=""):
     render = md.render
-    md.render = lambda x: css_inline.inline_fragment(render(x), css=css)
+
+    def inline_css(x):
+        out = f"<style>{css}</style>" + render(x)
+        return css_inline.inline(out)
+
+    md.render = inline_css
 
 
 def dollor_math_renderer(content, config):
