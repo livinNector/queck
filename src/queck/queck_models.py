@@ -256,12 +256,15 @@ class Queck(BaseModel):
             return result
 
     def to_html(
-        self, file_name: str = None, render_mode: Literal["fast", "compat"] = "fast"
+        self,
+        file_name: str = None,
+        render_mode: Literal["fast", "latex", "compat"] = "fast",
     ):
         assert render_mode in [
             "fast",
+            "latex",
             "compat",
-        ], 'render_mode must be one of "fast" or "compat"'
+        ], 'render_mode must be one of "fast", "latex" or "compat"'
         result = templates[render_mode].render(quiz=self)
         if file_name:
             write_file(file_name, result, format="html")
@@ -272,7 +275,7 @@ class Queck(BaseModel):
         self,
         output_file=None,
         format: Literal["queck", "html", "md", "json"] = "html",
-        render_mode: Literal["fast", "compat"] = "fast",
+        render_mode: Literal["fast", "latex", "compat"] = "fast",
     ):
         """Exports the quiz file to the required format."""
         match format:

@@ -56,7 +56,7 @@
 {%- if item.type == "common_data" -%}
 {%- set index = loop.index -%}
 {{-'<div class="no-break">\n' if format=='html' else ''}}
-## Question {{index}} [COMMON_DATA]{%if item.marks %} ({{item.marks}} marks){%endif%}
+## Question {{index}} [Common Data]{%if item.marks %} ({{item.marks}} marks){%endif%}
 
 ### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
 

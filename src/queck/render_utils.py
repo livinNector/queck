@@ -13,6 +13,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
 
 from . import templates
+from .gh_alert_mdit import md_it_github_alerts
 
 
 def md_format(text):
@@ -37,10 +38,9 @@ def pygments_plugin(md):
             padding:10px;
             border-radius:5px;
             border: thin solid #ddd;
-            margin-bottom:.5em;
-            font-size: large;
+            margin:.5rem 0;
+            font-size:85%;
             """,
-            prestyles="padding:0px; margin:0px;",
         )
 
         highlighted_code = highlight(content, lexer, formatter)
@@ -71,6 +71,7 @@ def get_base_md():
         MarkdownIt("gfm-like")
         .use(tasklists_plugin, enabled=True)
         .use(container_plugin, name="no-break")
+        .use(md_it_github_alerts)
     )
 
 
@@ -78,7 +79,10 @@ def get_fast_md():
     return get_base_md().use(dollarmath_plugin, renderer=dollor_math_renderer)
 
 
-default_css = files(templates).joinpath("style.css").read_text()
+default_css = (
+    files(templates).joinpath("default.css").read_text()
+    + files(templates).joinpath("base.css").read_text()
+)
 md = {}
 md["base"] = get_base_md()
 md["fast"] = get_fast_md()
@@ -105,6 +109,11 @@ templates["fast"] = get_template_env(
     md=md["fast"].render, mdformat=md_format
 ).get_template(
     "queck_template.html.jinja", globals={"render_mode": "fast", "format": "html"}
+)
+templates["latex"] = get_template_env(
+    md=md["fast"].render, mdformat=md_format
+).get_template(
+    "queck_template.html.jinja", globals={"render_mode": "latex", "format": "html"}
 )
 templates["compat"] = get_template_env(
     md=md["compat"].render, mdformat=md_format

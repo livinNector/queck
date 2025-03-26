@@ -28,7 +28,7 @@ class QueckCli:
         *queck_files,
         format: Literal["html", "md", "json"] = "html",
         output_folder="export",
-        render_mode: Literal["fast", "compat"] = "fast",
+        render_mode: Literal["fast", "latex", "compat"] = "fast",
         watch=False,
     ):
         """Export queck (YAML) files into the specified .
