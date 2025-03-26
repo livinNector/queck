@@ -1,7 +1,7 @@
 
 [project]
 name = "queck"
-version = "0.1.0"
+version = "1.0.0"
 description = "A quiz authoring format and tool with different export formats."
 readme = "README.md"
 authors = [{ name = "Livin Nector", email = "livinnector2001@gmail.com" }]
@@ -9,7 +9,6 @@ license = { text = "MIT" }
 requires-python = "<4.0,>=3.10"
 dependencies = [
     "pydantic<3.0,>=2.0",
-    "pyyaml<7.0,>=6.0",
     "jinja2<4.0,>=3.1",
     "mdit-py-plugins>=0.4.2",
     "linkify-it-py>=2.0.3",
@@ -17,7 +16,6 @@ dependencies = [
     "css-inline>=0.14.1",
     "fire>=0.7.0",
     "pygments>=2.18.0",
-    "nodeenv>=1.9.1",
     "asyncio>=3.4.3",
     "websockets>=13.1",
     "mdformat>=0.7.19",

@@ -5,9 +5,14 @@ from typing import Literal
 import fire
 from watchfiles import awatch
 
-from .extract import extract_queck
 from .live_server import LiveServer
 from .queck_models import Queck
+
+GENAI_ENABLED = True
+try:
+    from .extract import extract_queck
+except ImportError:
+    GENAI_ENABLED = False
 
 
 class QueckCli:
@@ -21,7 +26,13 @@ class QueckCli:
             Queck.read_queck(queck_file).to_queck(queck_file)
 
     def extract(self, file_name, model=None):
-        extract_queck(file_name, model).to_queck(file_name)
+        if GENAI_ENABLED:
+            extract_queck(file_name, model).to_queck(file_name)
+        else:
+            print(
+                "optional genai features not enabled, "
+                "install the package queck[genai] to avail this feature."
+            )
 
     def export(
         self,
