@@ -63,6 +63,15 @@ class Choice(BaseModel):
 class Choices(RootModel):
     root: list[Choice]
 
+    def __getitem__(self, item):
+        return self.root[item]
+
+    def __setitem__(self, item, value):
+        self.root[item] = value
+
+    def __iter__(self):
+        return iter(self.root)
+
     @property
     def n_correct(self):
         return len(list(filter(lambda x: x.is_correct, self.root)))

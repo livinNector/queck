@@ -18,7 +18,9 @@ from .gh_alert_mdit import md_it_github_alerts
 
 def md_format(text):
     return mdformat.text(
-        text, options={"wrap": 80}, extensions={"gfm", "gfm_alerts", "myst"}
+        text,
+        options={"wrap": 80},
+        extensions={"gfm", "gfm_alerts", "myst", "simple_breaks"},
     ).strip()
 
 
@@ -41,6 +43,7 @@ def pygments_plugin(md):
             margin:.5rem 0;
             font-size:85%;
             """,
+            prestyles="border:none;",
         )
 
         highlighted_code = highlight(content, lexer, formatter)
@@ -76,7 +79,9 @@ def get_base_md():
 
 
 def get_fast_md():
-    return get_base_md().use(dollarmath_plugin, renderer=dollor_math_renderer)
+    return get_base_md().use(
+        dollarmath_plugin, renderer=dollor_math_renderer, double_inline=True
+    )
 
 
 default_css = (

@@ -99,12 +99,16 @@ body {
 }
 
 pre {
-  margin: .5rem 0 ;
+  margin: .5rem 0;
   padding: 0;
+  max-width: fit-content;
+  border: thin solid #ddd;
+  border-radius: 5px;
 }
 
 pre code {
   line-height: normal;
+  max-width: fit-content;
 }
 
 blockquote {

@@ -3,7 +3,7 @@
 body {
     font-size: 12pt;
     font-family: sans;
-    line-height: 1.8rem;
+    line-height: 1.8 !important;
 }
 
 p,

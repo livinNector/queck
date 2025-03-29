@@ -35,15 +35,16 @@ class Answer[T]:
 class AnswerModel(RootModel[T]):
     """Same as RootModel but adds and alias value to root attribute of root model."""
 
+    root: T
     type: ClassVar[str]
 
     @property
-    def value(self):
+    def value(self) -> T:
         """Alias for root."""
         return self.root
 
     @value.setter
-    def value(self, value):
+    def value(self, value: T):
         self.root = value
 
     @model_serializer(mode="plain")
@@ -277,7 +278,9 @@ class ChoicesBase(AnswerModel):
 
 
 # manually defining json schema as contians is not included in pydantic yet.
-class SingleSelectChoices(ChoicesBase):
+class SingleSelectChoices(
+    ChoicesBase[list[SingleSelectCorrectChoice | IncorrectChoice]]
+):
     """List of choices with only one choice selectable and correct."""
 
     type: ClassVar[AnswerType] = "single_select_choices"
@@ -308,7 +311,9 @@ class SingleSelectChoices(ChoicesBase):
         return self
 
 
-class MultipleSelectChoices(ChoicesBase):
+class MultipleSelectChoices(
+    ChoicesBase[list[MultipleSelectCorrectChoice | IncorrectChoice]]
+):
     """List of choices with one or more choices selectable and correct."""
 
     type: ClassVar[AnswerType] = "multiple_select_choices"
@@ -338,21 +343,21 @@ class MultipleSelectChoices(ChoicesBase):
         return self
 
 
-class ShortAnswer(AnswerModel):
+class ShortAnswer(AnswerModel[str]):
     """Text based answer."""
 
     type: ClassVar[AnswerType] = "short_answer"
     root: str
 
 
-class TrueOrFalse(AnswerModel):
+class TrueOrFalse(AnswerModel[bool]):
     """True or false answer."""
 
     type: ClassVar[AnswerType] = "true_false"
     root: bool
 
 
-class Integer(AnswerModel):
+class Integer(AnswerModel[int]):
     """Numerical integer answer."""
 
     type: ClassVar[AnswerType] = "num_int"
@@ -386,7 +391,7 @@ class NumRangeRoot(PatternStringBase):
     high = PatternStringBase.group_property("high")
 
 
-class NumRange(AnswerModel):
+class NumRange(AnswerModel[NumRangeRoot]):
     type: ClassVar[str] = "num_range"
     root: NumRangeRoot
 
@@ -419,6 +424,6 @@ class NumToleranceRoot(PatternStringBase):
     tolerance = PatternStringBase.group_property("tolerance")
 
 
-class NumTolerance(AnswerModel):
+class NumTolerance(AnswerModel[NumToleranceRoot]):
     type: ClassVar[str] = "num_tolerance"
     root: NumToleranceRoot
