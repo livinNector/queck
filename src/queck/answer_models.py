@@ -306,7 +306,10 @@ class SingleSelectChoices(
 
     @model_validator(mode="after")
     def check(self):
-        assert self.n_correct == 1, "Should have exactly one correct answer."
+        assert self.n_correct == 1, (
+            "Should have exactly one correct answer "
+            f"but has {self.n_correct} correct answers."
+        )
         assert self.n_incorrect > 0, "Should have one or more incorrect answers"
         return self
 
