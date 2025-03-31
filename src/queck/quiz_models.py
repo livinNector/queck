@@ -51,7 +51,7 @@ class Choice(BaseModel):
         context = info.context
         if not self.is_correct:
             mark = " "
-        elif self.type == "multi_select":
+        elif self.type == "multiple_select":
             mark = "x"
         else:
             mark = "o"
