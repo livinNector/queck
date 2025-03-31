@@ -119,10 +119,10 @@ class NumTolerance(FormattedModel):
 
 
 class Answer(BaseModel):
+    type: AnswerType
     value: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
         union_mode="left_to_right", default=None
     )
-    type: AnswerType
 
     @model_serializer(mode="wrap")
     def ser_parsed(
