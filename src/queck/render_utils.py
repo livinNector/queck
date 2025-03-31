@@ -5,6 +5,7 @@ import mdformat
 from jinja2 import Environment, PackageLoader, select_autoescape
 from markdown_it import MarkdownIt
 from markdown_it.common.utils import escapeHtml
+from mdit_py_plugins.amsmath import amsmath_plugin
 from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
@@ -57,8 +58,8 @@ def css_inline_plugin(md, css=""):
     render = md.render
 
     def inline_css(x):
-        out = f"<style>{css}</style>" + render(x)
-        return css_inline.inline(out)
+        out = f"<div>{render(x)}</div>"
+        return css_inline.inline_fragment(out, css=css)
 
     md.render = inline_css
 
@@ -79,8 +80,10 @@ def get_base_md():
 
 
 def get_fast_md():
-    return get_base_md().use(
-        dollarmath_plugin, renderer=dollor_math_renderer, double_inline=True
+    return (
+        get_base_md()
+        .use(dollarmath_plugin, renderer=dollor_math_renderer, double_inline=True)
+        .use(amsmath_plugin)
     )
 
 
