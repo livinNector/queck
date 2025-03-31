@@ -27,6 +27,7 @@
           "items": {
             "$ref": "#/$defs/Question"
           },
+          "minItems": 2,
           "title": "ContextualQuestions",
           "type": "array"
         }

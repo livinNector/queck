@@ -149,6 +149,7 @@ class CommonDataQuestion(QuestionBase):
     questions: list[Question] = Field(
         title="ContextualQuestions",
         description="A list of questions related to the common data.",
+        min_length=2,
     )
 
     @property
