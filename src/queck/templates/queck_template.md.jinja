@@ -5,7 +5,9 @@
 ***Tags:*** {% set comma = joiner(", ") -%}{%for tag in question.tags%}{{comma()}}`{{tag}}`{%endfor %}
 
 {%endif -%}
+{{-'\n<div class="fit-width">\n' if format=='html' else ''}}
 {{ question.text }}  
+{{"\n</div>\n" if format=='html' else ''-}}
 {% set answer = question.answer or None -%}
 {% if answer.type in ['single_select_choices','multiple_select_choices'] -%}
 {%- for choice in answer.root %}
@@ -60,8 +62,9 @@
 
 ### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
 
+{{'\n<div class="fit-width">\n' if format=='html' else ''-}}
 {{ item.text }}
-{{-"\n</div>\n" if format=='html' else ''}}
+{{-"\n </div>\n" if format=='html' else ''}}
 {%for question in item.questions -%}
 {{-'\n<div class="no-break">\n' if format=='html' else ''-}}
 {{ render_question(question, index+0.1*loop.index, level=3) }}

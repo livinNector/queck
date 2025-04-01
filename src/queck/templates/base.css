@@ -94,6 +94,17 @@ body {
   background: none;
 }
 
+main {
+  font-size: 12pt;
+  font-family: sans-serif;
+  line-height: 1.7;
+}
+
+.fit-width {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .no-break {
   page-break-inside: avoid;
 }
@@ -101,14 +112,12 @@ body {
 pre {
   margin: .5rem 0;
   padding: 0;
-  max-width: fit-content;
   border: thin solid #ddd;
   border-radius: 5px;
 }
 
 pre code {
   line-height: normal;
-  max-width: fit-content;
 }
 
 blockquote {
@@ -128,6 +137,8 @@ blockquote {
 
 .task-list-item {
   margin-bottom: 1rem;
+  width: fit-content;
+  max-width: 100%;
 }
 
 :root {

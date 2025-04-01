@@ -18,17 +18,36 @@
       })
     }
   </script>
-  {%if render_mode== 'latex'%}
-  <link rel="stylesheet" href="https://latex.vercel.app/style.css">
-  {%endif%}
+  <style>
+    {% include 'base.css' %}
+  </style>
   {%if render_mode == 'fast'%}
   <style>
     {% include 'default.css' %}
   </style>
   {%endif%}
-  {%if render_mode in ["fast", 'latex']%}
+  {%if render_mode== 'latex'%}
+  <link rel="stylesheet" href="https://latex.vercel.app/style.css">
   <style>
-    {% include 'base.css' %}
+    main {
+      font-size: 12pt;
+      font-family: inherit;
+    }
+    pre {
+      margin: .5rem 0;
+      padding: 0;
+      border: thin solid #ddd;
+      border-radius: 5px;
+    }
+
+    body {
+      /* from bootstrap*/
+      max-width: 768px;
+      padding: 20px;
+      margin: auto;
+      background: none;
+    }
+
   </style>
   {%endif%}
 
@@ -57,9 +76,11 @@
 </head>
 
 <body>
+  <main>
   {%filter md%}
   {% include "queck_template.md.jinja" %}
   {%endfilter%}
+  </main>
 </body>
 
 </html>

@@ -58,7 +58,7 @@ def css_inline_plugin(md, css=""):
     render = md.render
 
     def inline_css(x):
-        out = f"<div>{render(x)}</div>"
+        out = f"<main>{render(x)}</main>"
         return css_inline.inline_fragment(out, css=css)
 
     md.render = inline_css
@@ -88,8 +88,8 @@ def get_fast_md():
 
 
 default_css = (
-    files(templates).joinpath("default.css").read_text()
-    + files(templates).joinpath("base.css").read_text()
+    files(templates).joinpath("base.css").read_text()
+    + files(templates).joinpath("default.css").read_text()
 )
 md = {}
 md["base"] = get_base_md()
