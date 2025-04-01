@@ -21,7 +21,7 @@ def md_format(text):
     return mdformat.text(
         text,
         options={"wrap": 80},
-        extensions={"gfm", "gfm_alerts", "myst", "simple_breaks"},
+        extensions={"gfm", "gfm_alerts", "dollarmath", "simple_breaks"},
     ).strip()
 
 

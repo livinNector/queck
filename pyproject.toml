@@ -1,7 +1,7 @@
 
 [project]
 name = "queck"
-version = "1.0.1"
+version = "1.0.2a1"
 description = "A quiz authoring format and tool with different export formats."
 readme = "README.md"
 authors = [{ name = "Livin Nector", email = "livinnector2001@gmail.com" }]
@@ -24,14 +24,15 @@ dependencies = [
     "ruamel-yaml>=0.18.6",
     "mdformat-tables>=1.0.0",
     "mdformat-gfm-alerts>=1.0.1",
-    "mdformat-myst@https://github.com/livinNector/mdformat-myst.git",
+    "mdformat-dollarmath>=0.0.1",
+    "ipython~=8.0",
     "yamlfix>=1.17.0",
     "mdformat-simple-breaks>=0.0.1",
 ]
 
 [project.urls]
 github = "https://github.com/livinNector/queck"
-source = "https://github.com/livinNector/queck. git"
+source = "https://github.com/livinNector/queck.git"
 
 [build-system]
 requires = ["setuptools>=43.0.0", "wheel"]

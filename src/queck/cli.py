@@ -22,10 +22,12 @@ class QueckCli:
     """
 
     def format(self, *queck_files):
+        """Formats the queck file."""
         for queck_file in queck_files:
             Queck.read_queck(queck_file).to_queck(queck_file)
 
     def extract(self, file_name, model=None):
+        """Extracts the questions as queck from the given file."""
         if GENAI_ENABLED:
             extract_queck(file_name, model).to_queck(file_name)
         else:

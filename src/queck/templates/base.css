@@ -126,6 +126,10 @@ blockquote {
   pointer-events: none;
 }
 
+.task-list-item {
+  margin-bottom: 1rem;
+}
+
 :root {
   --color-note: #0969da;
   --color-tip: #1a7f37;
