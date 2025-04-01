@@ -5,22 +5,34 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{quiz.title}}</title>
-  {%if render_mode== "fast"%}
-  {%include "katex_and_hljs_includes.html"%}
+  {%if render_mode in ["fast", 'latex']%}
+  {%include "hljs_includes.html"%}
   {%endif%}
+  {%include "katex_includes.html"%}
   <script>
-    window.onload=()=>{
-        document.querySelectorAll('.contains-task-list input[type="checkbox"]').forEach((checkbox) => {
-          checkbox.onchange = () => {
-            checkbox.checked = checkbox.getAttribute('checked') === 'checked'
-          };
-        })
-      }
+    window.onload = () => {
+      document.querySelectorAll('.contains-task-list input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.onchange = () => {
+          checkbox.checked = checkbox.getAttribute('checked') === 'checked'
+        };
+      })
+    }
   </script>
-  
+  {%if render_mode== 'latex'%}
+  <link rel="stylesheet" href="https://latex.vercel.app/style.css">
+  {%endif%}
+  {%if render_mode == 'fast'%}
   <style>
-    {% include 'style.css' %}
+    {% include 'default.css' %}
   </style>
+  {%endif%}
+  {%if render_mode in ["fast", 'latex']%}
+  <style>
+    {% include 'base.css' %}
+  </style>
+  {%endif%}
+
+
   {# For Live reload #}
   <script>
     var ws = new WebSocket( // eslint-disable-line
@@ -46,7 +58,7 @@
 
 <body>
   {%filter md%}
-  {% include "quiz_template.md.jinja" %}
+  {% include "queck_template.md.jinja" %}
   {%endfilter%}
 </body>
 

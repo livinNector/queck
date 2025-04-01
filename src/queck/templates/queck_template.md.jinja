@@ -1,0 +1,77 @@
+{% macro render_question(question, index, level=2) %}
+{{"#"*level}} Question {{ index }} [{{ question.type.split('_') | join(" ") | title }}]{%if question.marks %} ({{question.marks}} marks){%endif%}
+
+{%if question.tags-%}
+***Tags:*** {% set comma = joiner(", ") -%}{%for tag in question.tags%}{{comma()}}`{{tag}}`{%endfor %}
+
+{%endif -%}
+{{ question.text }}  
+{% set answer = question.answer or None -%}
+{% if answer.type in ['single_select_choices','multiple_select_choices'] -%}
+{%- for choice in answer.root %}
+- [{{ 'x' if choice.is_correct else ' '  }}] {{"<!---->\n    " if choice.text.startswith("```") else ""-}}
+    {{ choice.text | indent(2) }}
+    {%- if choice.feedback %}  
+    _{{ choice.feedback }}_
+    {%- endif -%}
+{%- endfor -%}
+{%- elif answer.type == "true_false" %}
+- [{{ 'x' if answer else ' '  }}] True
+- [{{ 'x' if not answer else ' '  }}] False
+{%- elif answer.type == "num_int" %}
+**Answer:** ${{ answer.value }}$
+{%- elif answer.type == "num_range" %}
+**Answer:** ${{ answer.value.low }}$ to ${{ answer.value.high }}$
+{%- elif answer.type == "num_tolerance" %}
+**Answer:** ${{ answer.value.value }}$ ± ${{ answer.value.tolerance }}$
+{%- elif answer.type == "short_answer" %}
+**Answer:** {{ answer.value }}
+{%- endif %}
+{%if question.feedback %}
+**Feedback**  
+{{ question.feedback }}
+{% endif -%}
+{% endmacro -%}
+{%macro overview_row(name, type)-%}
+{%-set questions = quiz.questions|selectattr('type', "equalto", type) | list -%}
+| {{name}} | {{ questions | length }} | {{questions | map(attribute='marks') | sum}} |
+{%-endmacro -%}
+{%block body-%}
+{%filter mdformat%}
+# {{ quiz.title }} {%if quiz.marks %}({{quiz.marks}} marks){%endif%}
+
+## Overview
+
+| Question Type       | Count | Marks|
+|---------------------|-------|------|
+{{overview_row('Single Select','single_select')}}
+{{overview_row('Multiple Select','multiple_select')}}
+{{overview_row('Numerical','numerical_answer')}}
+{{overview_row('Short Answer','short_answer')}}
+{{overview_row('Common Data','common_data')}}
+
+---
+{% set question_count = 0 -%}
+{%- for item in quiz.questions -%}
+{%- if item.type == "common_data" -%}
+{%- set index = loop.index -%}
+{{-'<div class="no-break">\n' if format=='html' else ''}}
+## Question {{index}} [Common Data]{%if item.marks %} ({{item.marks}} marks){%endif%}
+
+### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
+
+{{ item.text }}
+{{-"\n</div>\n" if format=='html' else ''}}
+{%for question in item.questions -%}
+{{-'\n<div class="no-break">\n' if format=='html' else ''-}}
+{{ render_question(question, index+0.1*loop.index, level=3) }}
+{{-"\n</div>" if format=='html' else ''-}}
+{%- endfor -%}
+{%- else -%}
+{{-'\n<div class="no-break">\n' if format=='html' else ''-}}
+{{ render_question(item, loop.index) }}
+{{-"\n</div>\n" if format=='html' else ''-}}
+{%- endif -%}
+{%- endfor -%}
+{%endfilter%}
+{%endblock body%}

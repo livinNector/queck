@@ -24,10 +24,10 @@ questions:
     answer: 8
     marks: 1
 
-  - text: |
-      State whether the below statement is **True** or **False**. 
+  - text: |-
+      State whether the below statement is **True** or **False**.
 
-      "_This statement is False._"  
+      "_This statement is False._"
 
       Hint: you will never get this one correct 😜.
     answer: true
@@ -48,32 +48,29 @@ questions:
     answer: 13
     marks: 3
 
-  - text: |
-      what is the output of the below `python` program?  
+  - text: |-
+      what is the output of the below `python` program?
+
       ```python
       for i in range(2):
         print('hi') 
       ```
     answer:
-      - |
-        ( )
-
-        ```
+      - |-
+        ( ) ```
         hi
         hi
         hi
         ```
 
-      - |
-        (x)
-        ```
+      - |-
+        (x) ```
         hi
         hi 
         ```
 
-      - |
-        ( )
-        ```
+      - |-
+        ( ) ```
         hi
         hi 
         hi
@@ -84,18 +81,16 @@ questions:
     marks: 2
 
   # Comprehension question
-  - text: >
-      The following questions are about the solar system.
-      Read the below passage before answering.
-
+  - text: |-
+      The following questions are about the solar system. Read the below passage
+      before answering.
 
       The solar system consists of the Sun and the objects that orbit around it,
-      including eight planets, moons, and other celestial bodies. 
-      Mars, the fourth planet from the Sun, is known as the Red Planet 
-      due to its reddish appearance caused by iron oxide (rust) 
-      on its surface. Mars has two small moons, Phobos and Deimos. 
-      Unlike Earth, which has one large moon, Mars' moons are 
-      much smaller and irregularly shaped.
+      including eight planets, moons, and other celestial bodies. Mars, the fourth
+      planet from the Sun, is known as the Red Planet due to its reddish appearance
+      caused by iron oxide (rust) on its surface. Mars has two small moons, Phobos and
+      Deimos. Unlike Earth, which has one large moon, Mars' moons are much smaller and
+      irregularly shaped.
     questions:
       - text: Which planet is known as the Red Planet?
         answer:
@@ -109,6 +104,6 @@ questions:
         answer: 2
         marks: 2
 
-      - text: The other name for iron oxide is _____.
+      - text: The other name for iron oxide is \_\_\_\_\_.
         answer: rust
         marks: 1

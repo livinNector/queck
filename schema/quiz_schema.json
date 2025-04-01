@@ -1,0 +1,292 @@
+{
+  "$defs": {
+    "Answer": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Choices"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "$ref": "#/$defs/NumRange"
+            },
+            {
+              "$ref": "#/$defs/NumTolerance"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "type": {
+          "enum": [
+            "single_select_choices",
+            "multiple_select_choices",
+            "num_int",
+            "num_range",
+            "num_tolerance",
+            "short_answer",
+            "true_false",
+            "none"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Answer",
+      "type": "object"
+    },
+    "Choice": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "is_correct": {
+          "title": "Is Correct",
+          "type": "boolean"
+        },
+        "feedback": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feedback"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "enum": [
+                "single_select",
+                "multiple_select"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
+        }
+      },
+      "required": [
+        "text",
+        "is_correct"
+      ],
+      "title": "Choice",
+      "type": "object"
+    },
+    "Choices": {
+      "items": {
+        "$ref": "#/$defs/Choice"
+      },
+      "title": "Choices",
+      "type": "array"
+    },
+    "CommonDataQuestion": {
+      "properties": {
+        "questions": {
+          "items": {
+            "$ref": "#/$defs/Question"
+          },
+          "title": "Questions",
+          "type": "array"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "questions",
+        "text"
+      ],
+      "title": "CommonDataQuestion",
+      "type": "object"
+    },
+    "Description": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Description",
+      "type": "object"
+    },
+    "NumRange": {
+      "properties": {
+        "high": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "High"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Low"
+        }
+      },
+      "required": [
+        "high",
+        "low"
+      ],
+      "title": "NumRange",
+      "type": "object"
+    },
+    "NumTolerance": {
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Value"
+        },
+        "tolerance": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Tolerance"
+        }
+      },
+      "required": [
+        "value",
+        "tolerance"
+      ],
+      "title": "NumTolerance",
+      "type": "object"
+    },
+    "Question": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "answer": {
+          "$ref": "#/$defs/Answer"
+        },
+        "feedback": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "",
+          "title": "Feedback"
+        },
+        "marks": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 0,
+          "title": "Marks"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Tags"
+        }
+      },
+      "required": [
+        "text",
+        "answer"
+      ],
+      "title": "Question",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "questions": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Question"
+          },
+          {
+            "$ref": "#/$defs/CommonDataQuestion"
+          },
+          {
+            "$ref": "#/$defs/Description"
+          }
+        ]
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "questions",
+    "title"
+  ],
+  "title": "Quiz",
+  "type": "object"
+}

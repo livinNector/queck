@@ -6,21 +6,42 @@ import fire
 from watchfiles import awatch
 
 from .live_server import LiveServer
-from .quiz_models import Quiz
+from .queck_models import Queck
+
+GENAI_ENABLED = True
+try:
+    from .extract import extract_queck
+except ImportError:
+    GENAI_ENABLED = False
 
 
-class Queck:
+class QueckCli:
     """A CLI tool for Quiz Validation and Exporting.
 
     Provides options to validate and export quizzes defined in YAML format.
     """
+
+    def format(self, *queck_files):
+        """Formats the queck file."""
+        for queck_file in queck_files:
+            Queck.read_queck(queck_file).to_queck(queck_file)
+
+    def extract(self, file_name, model=None):
+        """Extracts the questions as queck from the given file."""
+        if GENAI_ENABLED:
+            extract_queck(file_name, model).to_queck(file_name)
+        else:
+            print(
+                "optional genai features not enabled, "
+                "install the package queck[genai] to avail this feature."
+            )
 
     def export(
         self,
         *queck_files,
         format: Literal["html", "md", "json"] = "html",
         output_folder="export",
-        render_mode: Literal["fast", "compat"] = "fast",
+        render_mode: Literal["fast", "latex", "compat"] = "fast",
         watch=False,
     ):
         """Export queck (YAML) files into the specified .
@@ -60,7 +81,7 @@ class Queck:
                     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
                     try:
-                        Quiz.read_queck(yaml_file).export(
+                        Queck.read_queck(yaml_file).export(
                             output_file=output_file,
                             format=format,
                             render_mode=render_mode,
@@ -111,7 +132,7 @@ class Queck:
 
 def main():
     # Fire the CLI with the Queck class
-    fire.Fire(Queck())
+    fire.Fire(QueckCli())
 
 
 if __name__ == "__main__":

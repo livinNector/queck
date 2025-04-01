@@ -1,0 +1,5 @@
+Extract the below quiz in the required output json format.
+Do not modify, add or remove any content or info or correct any mistakes from the actual content.
+
+Ensure that all the choices are marked correct or wrong according to the question.
+Ensure that only one correct option in single select choices.

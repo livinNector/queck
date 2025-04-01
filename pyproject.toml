@@ -1,15 +1,14 @@
 
 [project]
 name = "queck"
-version = "0.0.4"
+version = "1.0.2"
 description = "A quiz authoring format and tool with different export formats."
 readme = "README.md"
 authors = [{ name = "Livin Nector", email = "livinnector2001@gmail.com" }]
 license = { text = "MIT" }
-requires-python = "<4.0,>=3.10"
+requires-python = "<4.0,>=3.12"
 dependencies = [
     "pydantic<3.0,>=2.0",
-    "pyyaml<7.0,>=6.0",
     "jinja2<4.0,>=3.1",
     "mdit-py-plugins>=0.4.2",
     "linkify-it-py>=2.0.3",
@@ -17,13 +16,23 @@ dependencies = [
     "css-inline>=0.14.1",
     "fire>=0.7.0",
     "pygments>=2.18.0",
-    "nodeenv>=1.9.1",
     "asyncio>=3.4.3",
     "websockets>=13.1",
     "mdformat>=0.7.19",
     "mdformat-black>=0.1.1",
     "mdformat-gfm>=0.3.7",
+    "ruamel-yaml>=0.18.6",
+    "mdformat-tables>=1.0.0",
+    "mdformat-gfm-alerts>=1.0.1",
+    "mdformat-dollarmath>=0.0.1",
+    "ipython~=8.0",
+    "yamlfix>=1.17.0",
+    "mdformat-simple-breaks>=0.0.1",
 ]
+
+[project.urls]
+github = "https://github.com/livinNector/queck"
+source = "https://github.com/livinNector/queck.git"
 
 [build-system]
 requires = ["setuptools>=43.0.0", "wheel"]
@@ -31,12 +40,16 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
 "queck.templates" = ["*"]
+"queck.prompts" = ["*"]
 
 [project.scripts]
 queck = "queck.cli:main"
 
+[project.optional-dependencies]
+genai = ["langchain-openai>=0.3.9"]
+
 [dependency-groups]
-dev = ["ipykernel>=6.29.5", "ruff>=0.7.3"]
+dev = ["ipykernel>=6.29.5", "pytest>=8.3.4", "ruff>=0.7.3"]
 
 [tool.uv]
 package = true
