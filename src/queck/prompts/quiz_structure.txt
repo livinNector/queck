@@ -47,7 +47,7 @@ Do not use \( \) or \[ \] math blocks.
 Use dollor based math delimeters $...$ and $$...$$ for inline and block math respectively.
 Use single backtics for ` for inline code and variables names.
 Use triple backtics ``` for code blocks.
-Ensure \begin{align} and \begin{align*} statements are enclosed with $$ as to \begin{aligned}
+Ensure \begin{{align}} and \begin{{align*}} statements are enclosed with $$ as to \begin{{aligned}}
 
 Do not add the order indicators like a), b), c) or 1. 2. 3. for the choices in the text.
 

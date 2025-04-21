@@ -17,11 +17,7 @@ quiz_generation_prompt = ChatPromptTemplate(
 quiz_extraction_prompt = ChatPromptTemplate(
     [
         ("system", files(prompts).joinpath("quiz_structure.txt").read_text()),
-        (
-            "human",
-            files(prompts).joinpath("quiz_extraction_prompt.txt").read_text()
-            + "\n\nContent:\n{text}",
-        ),
+        ("human", files(prompts).joinpath("quiz_extraction_prompt.txt").read_text()),
     ]
 )
 
