@@ -6,6 +6,7 @@ from pydantic import (
     RootModel,
     SerializationInfo,
     SerializerFunctionWrapHandler,
+    ValidationInfo,
     model_serializer,
     model_validator,
 )
@@ -119,10 +120,35 @@ class NumTolerance(FormattedModel):
 
 
 class Answer(BaseModel):
-    type: AnswerType
     value: Choices | bool | int | NumRange | NumTolerance | str | None = Field(
         union_mode="left_to_right", default=None
     )
+    type: AnswerType
+
+    @model_validator(mode="after")
+    def choice_type_handle(self, info: ValidationInfo):
+        # Change to multi select if more than one correct option is there
+
+        if info.context:
+            if info.context["fix_multi_select"]:
+                match value := self.value:
+                    case Choices():
+                        if value.n_correct > 1:
+                            self.type = "multiple_select_choices"
+                        for choice in iter(value):
+                            if choice.is_correct:
+                                choice.type = "multiple_select"
+
+            if info.context["force_single_select"]:
+                match value := self.value:
+                    case Choices():
+                        if value.n_correct == 1:
+                            self.type = "single_select_choices"
+                        for choice in iter(value):
+                            if choice.is_correct:
+                                choice.type = "single_select"
+
+        return self
 
     @model_serializer(mode="wrap")
     def ser_parsed(
