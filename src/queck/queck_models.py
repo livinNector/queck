@@ -162,6 +162,9 @@ class CommonDataQuestion(QuestionBase):
         return m
 
 
+QueckItem = Description | Question | CommonDataQuestion
+
+
 class Queck(BaseModel):
     """Represents a YAML-based quiz format.
 
@@ -174,7 +177,7 @@ class Queck(BaseModel):
     """
 
     title: str = Field(default="Queck Title", description="The title of the quiz.")
-    questions: list[Description | Question | CommonDataQuestion] = Field(
+    questions: list[QueckItem] = Field(
         description="A collection of questions, "
         "which may include standalone questions or common-data questions.",
     )
