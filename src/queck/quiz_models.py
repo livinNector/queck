@@ -79,7 +79,9 @@ class Choices(RootModel):
 
     @model_validator(mode="after")
     @classmethod
-    def alteast_one_correct(cls, value):
+    def alteast_one_correct(cls, value, info: ValidationInfo):
+        if info.context and info.context.get("ignore_n_correct"):
+            return value
         assert value.n_correct > 0, "Atleast one choice must be correct"
         assert value.n_correct < len(value.root), "All choices should not be correct"
         return value
@@ -130,20 +132,16 @@ class Answer(BaseModel):
         # Change to multi select if more than one correct option is there
 
         if info.context:
-            if info.context["fix_multi_select"]:
-                match value := self.value:
-                    case Choices():
-                        if value.n_correct > 1:
-                            self.type = "multiple_select_choices"
+            match value := self.value:
+                case Choices():
+                    if value.n_correct > 1 and info.context.get("fix_multiple_select"):
+                        self.type = "multiple_select_choices"
                         for choice in iter(value):
                             if choice.is_correct:
                                 choice.type = "multiple_select"
 
-            if info.context["force_single_select"]:
-                match value := self.value:
-                    case Choices():
-                        if value.n_correct == 1:
-                            self.type = "single_select_choices"
+                    if value.n_correct == 1 and info.context.get("force_single_select"):
+                        self.type = "single_select_choices"
                         for choice in iter(value):
                             if choice.is_correct:
                                 choice.type = "single_select"
