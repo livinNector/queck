@@ -8,6 +8,7 @@ from pydantic import (
     RootModel,
     SerializationInfo,
     TypeAdapter,
+    ValidationInfo,
     model_serializer,
     model_validator,
 )
@@ -138,7 +139,7 @@ def format_choice(mark, text, feedback):
 
 
 def choice_pattern(mark):
-    return r"\({}\) *(?P<text>(.|\r?\n)*?) *(/# *(?P<feedback>(.|\r?\n)*))?$".format(
+    return r"^ *\({}\) *(?P<text>(.|\r?\n)*?) *(/# *(?P<feedback>(.|\r?\n)*))?$".format(
         mark
     )
 
@@ -330,7 +331,9 @@ class SingleSelectChoices(
     )
 
     @model_validator(mode="after")
-    def check(self):
+    def check(self, info: ValidationInfo):
+        if info.context and info.context.get("ignore_n_correct"):
+            return self
         assert self.n_correct == 1, (
             "Should have exactly one correct answer "
             f"but has {self.n_correct} correct answers."
@@ -365,7 +368,9 @@ class MultipleSelectChoices(
     )
 
     @model_validator(mode="after")
-    def check(self):
+    def check(self, info: ValidationInfo):
+        if info.context and info.context.get("ignore_n_correct"):
+            return self
         assert self.n_correct > 0, "Should have one or more correct answers."
         assert self.n_incorrect > 0, "Should have one or more incorrect answers."
         return self
