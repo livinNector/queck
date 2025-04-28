@@ -3,6 +3,8 @@ Do not modify, add or remove any content or info or correct any mistakes from th
 
 Ensure that all the choices are marked correct or wrong according to the question.
 Ensure that only one correct option in single select choices.
+Extract the contents of the choices as markdown. Use code blocks and dollar math blocks in choices as needed.
+Common Data Questions wont have answer instead it has a list of question nested inside it.
 
 Content:
 {text}

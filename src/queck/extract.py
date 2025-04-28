@@ -54,24 +54,31 @@ def get_model(model_name):
         ).with_structured_output(Quiz.model_json_schema(), method="json_mode")
 
 
-def get_validator(fix_multi_select=True, force_single_select=False):
+def get_validator(force_single_select=False):
     return RunnableLambda(
         lambda x: Quiz.model_validate(
             x,
             context={
-                "fix_multi_select": fix_multi_select,
+                "fix_multiple_select": True,
                 "force_single_select": force_single_select,
+                "ignore_n_correct": True,
             },
         )
     )
 
 
 def quiz2queck(quiz: Quiz):
-    return Queck.model_validate(
-        quiz.model_dump(
-            context={"formatted": True}, exclude_none=True, exclude_defaults=True
-        )
+    quiz_dump = quiz.model_dump(
+        context={"formatted": True}, exclude_none=True, exclude_defaults=True
     )
+    try:
+        return Queck.model_validate(
+            quiz_dump,
+            context={"ignore_n_correct": True},
+        )
+    except Exception as e:
+        e.quiz_dump = quiz_dump
+        raise e
 
 
 def prompt_queck(prompt: str, model_name: None):

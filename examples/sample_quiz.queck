@@ -3,10 +3,11 @@ questions:
   # Multiple choice questions with individiual feedback
   - text: What is the capital of **France**?
     answer:
-      - (x) Paris // correct
-      - ( ) London // London is the capital of Britian
-      - ( ) Berlin // Berlin is the capital of Germany
-      - ( ) Madrid // Madrid is the capital of Spain
+      - (x) Paris /# correct
+      - ( ) London /# London is the capital of Britian
+      - ( ) Berlin /# Berlin is the capital of Germany
+      - ( ) Madrid /# Madrid is the capital of Spain
+      - ( ) alsdkjfhla skdjfh /# asl;dkfj
     marks: 2
 
   # Multiple Select question with global feedback
