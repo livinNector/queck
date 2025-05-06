@@ -65,41 +65,62 @@ def queck_fixture():
 
 
 @pytest.mark.parametrize(
-    "choice_str, expected_text, expected_feedback, is_correct",
+    "choice_str, expected_text, expected_feedback, is_correct, is_single_select",
     [
-        ("(x) Correct Choice // Explanation", "Correct Choice", "Explanation", True),
         (
-            "( ) Incorrect Choice // Explanation",
-            "Incorrect Choice",
-            "Explanation",
-            False,
-        ),
-        (
-            "(x) Correct Choice Line 1  \nLine 2 // Explanation Line 1  \nLine 2",
-            "Correct Choice Line 1\\\nLine 2",
-            "Explanation Line 1\\\nLine 2",
-            True,
-        ),
-        ("( )\nCorrect Choice\n// Explanation", "Correct Choice", "Explanation", False),
-        (
-            "(x)\nCorrect Choice\n\n\n// \n\nExplanation\n\n",
+            "(x) Correct Choice /# Explanation",
             "Correct Choice",
             "Explanation",
             True,
+            False,
+        ),
+        (
+            "(o) Correct Choice /# Explanation",
+            "Correct Choice",
+            "Explanation",
+            True,
+            True,
+        ),
+        (
+            "( ) Incorrect Choice /# Explanation",
+            "Incorrect Choice",
+            "Explanation",
+            False,
+            False,
+        ),
+        (
+            "(x) Correct Choice Line 1  \nLine 2 /# Explanation Line 1  \nLine 2",
+            "Correct Choice Line 1\\\nLine 2",
+            "Explanation Line 1\\\nLine 2",
+            True,
+            False,
+        ),
+        (
+            "( )\nCorrect Choice\n/# Explanation",
+            "Correct Choice",
+            "Explanation",
+            False,
+            False,
+        ),
+        (
+            "(x)\nCorrect Choice\n\n\n/# \n\nExplanation\n\n",
+            "Correct Choice",
+            "Explanation",
+            True,
+            False,
         ),
     ],
 )
-def test_choices(choice_str, expected_text, expected_feedback, is_correct):
-    instantiated = (
-        MultipleSelectCorrectChoice(root=choice_str)
+def test_choices(
+    choice_str, expected_text, expected_feedback, is_correct, is_single_select
+):
+    model_type = (
+        (SingleSelectCorrectChoice if is_single_select else MultipleSelectCorrectChoice)
         if is_correct
-        else IncorrectChoice(root=choice_str)
+        else IncorrectChoice
     )
-    validated = (
-        MultipleSelectCorrectChoice.model_validate(choice_str)
-        if is_correct
-        else IncorrectChoice.model_validate(choice_str)
-    )
+    instantiated = model_type(root=choice_str)
+    validated = model_type.model_validate(choice_str)
 
     assert instantiated == validated
     assert instantiated.text == expected_text
