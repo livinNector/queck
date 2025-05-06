@@ -15,14 +15,14 @@
 - 📝 **YAML-based quiz authoring**: Author quizzes in a clean, human-readable YAML format.
 - 🧠 **Support for diverse question types**: Including multiple-choice, true/false, numerical answers, comprehension passages, and more.
 - ✔️ **Multiple answer formats**: Single select, multiple select, numerical ranges, and tolerance-based answers.
-- 🔍 **Schema validation with Pydantic**: Ensures your quiz structure is validated for correctness before exporting.
+- 🔍 **Schema validation with Pydantic and Json Schema**: Ensures your quiz structure is validated for correctness before exporting.
 - 📤 **Flexible export options**: Export quizzes in **JSON**, **HTML** (print-ready), or **Markdown** formats.
 - ⚙️ **Command-line interface**: Simple CLI for validation and export operations.
 - ♻️ **Live reloading for development**: Integrated live reload server to auto-update quizzes as you edit.
 - 📐 **Mathematical equation support**: Native support for dollar-math (`$..$` and `$$..$$` ) based LaTeX-style equations for math-based quizzes.
 - 💻 **Code block rendering**: Display code snippets within quiz questions for technical assessments.
 - 💯 **Optional Scoring**: Optional scoring support.
-
+- 🛠️ **Easy Integration**: Can be easily integrated into any system as it is available as a python package.
 ---
 
 ## 📝 Answer Types
@@ -36,7 +36,7 @@ Queck supports a variety of question types, including:
     ```yaml
     answer:
       - ( ) Option 1
-      - (o) Option 2 // feedback for option 2
+      - (o) Option 2 /# feedback for option 2
       - ( ) Option 3
       - ( ) Option 4
     ```
@@ -47,7 +47,7 @@ Queck supports a variety of question types, including:
     ```yaml
     answer:
       - ( ) Option 1
-      - (x) Option 2 // feedback for option 2
+      - (x) Option 2 /# feedback for option 2f
       - ( ) Option 3
       - (x) Option 4
     ```
@@ -80,6 +80,8 @@ Queck supports a variety of question types, including:
     ```yaml
     answer: 1.3|.5
     ```
+  - **Single Floating Point Values**\
+    By default floating point values are **not supported** as a best practice. But they can be added with range or tolerance type. For example, `0.5..0.5` or `0.5|0`.
 
 - **Short Answer**\
   Yaml string.
@@ -89,6 +91,18 @@ Queck supports a variety of question types, including:
   ```
 
 ---
+
+## Other validation rules
+1. Every choice based question should have **atleast one incorrect option**. 
+2. Common data questions should have **atleast two** contextual  questions inside them.
+
+## VS Code Profile
+
+The below VS code profile contains the necessary extensions and configurations for syntax highlighting and validation of queck files. 
+
+https://gist.github.com/livinNector/596a7c507a95eaa59014df9505159ce8
+
+Check [this](https://code.visualstudio.com/docs/configure/profiles#_import) for the instructions to import the vscode profile.
 
 ## 📄 Sample Queck Format
 
@@ -123,6 +137,8 @@ pip install queck
 
 ### `qeuck format`
 
+Formats the markdown content inside the queck file using mdformat.
+
 ```bash
 queck format quiz.queck
 ```
@@ -135,11 +151,41 @@ To export a quiz in HTML format with live watching enabled:
 queck export path/to/quiz.queck --format html --output_folder export --render_mode fast --watch
 ```
 
-- `--format`: Specify output format as `html` or `md`.
+- `--format`: Specify output format as `html`,`md` or `json`.
 - `--output_folder`: Directory for exported files.
-- `--render_mode`: Use `fast` for KaTeX and Highlight.js `compat` for inline styles, `latex` for using Latex.css.
+- `--render_mode`: (For html export only) Use `fast` for KaTeX and Highlight.js `compat` for inline styles, `latex` for using Latex.css.
+
+Shorthands for options are also supported.
+
+```bash
+queck export path/to/quiz.queck -f html -o export -r fast -w
+```
 
 ---
+
+## Experimental GenAI Features
+
+To enable this feature install queck using the following extras.
+
+```bash
+uv tool install "queck[genai]"
+```
+
+### `queck extract`
+
+To extract questions from text based formats like markdown or latex.
+
+```bash
+queck extract path/to/file.md --model "openai:gpt-4o-mini"
+```
+
+The model is provided with the format `{provider}:{model_name}`
+
+Available providers:
+  - `openai`
+  - `groq`
+
+
 
 ## 🤝 Contribution
 

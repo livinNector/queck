@@ -41,9 +41,9 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
 
 
 def get_model(model_name):
-    model_name = model_name or "open-ai:gpt-4o-mini"
+    model_name = model_name or "openai:gpt-4o-mini"
     provider, model_name = model_name.split(":")
-    if provider == "open-ai":
+    if provider == "openai":
         return ChatOpenAI(model=model_name or "gpt-4o-mini").with_structured_output(
             Quiz.model_json_schema(schema_generator=NoDefaultJsonSchema),
             method="json_schema",

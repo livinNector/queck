@@ -1,6 +1,6 @@
 title: Sample Quiz
 questions:
-  # Single Select choice questions with individiual feedback
+  # Single Select questions with individiual feedback
   - text: What is the capital of **France**?
     answer:
       - (o) Paris /# correct
@@ -17,6 +17,7 @@ questions:
       - ( ) HTML
       - ( ) CSS
     feedback: HTML and CSS are markup and styling language respectively
+    tags: [easy, programming]
     marks: 2
 
   # numerical or short answer type
@@ -64,7 +65,7 @@ questions:
         ```
 
       - |-
-        (x) ```
+        (o) ```
         hi
         hi 
         ```
@@ -80,7 +81,7 @@ questions:
       - ( ) The code has syntax errors
     marks: 2
 
-  # Comprehension question
+  # Common Data questions
   - text: |-
       The following questions are about the solar system. Read the below passage
       before answering.
@@ -95,7 +96,7 @@ questions:
       - text: Which planet is known as the Red Planet?
         answer:
           - ( ) Earth
-          - (x) Mars
+          - (o) Mars
           - ( ) Jupiter
           - ( ) Saturn
         marks: 2
