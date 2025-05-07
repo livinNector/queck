@@ -8,6 +8,7 @@ from pydantic import (
     RootModel,
     SerializationInfo,
     TypeAdapter,
+    ValidationInfo,
     model_serializer,
     model_validator,
 )
@@ -117,18 +118,28 @@ class PatternStringBase(abc.ABC, RootModel):
         )
 
 
+def escape_choice(text):
+    return re.sub(r"/#", r"/&#35;", text)
+
+
+def unescape_choice(text):
+    return re.sub(r"(/&#35;|&#47;#|&#47;&#35;)", r"/#", text)
+
+
 def format_choice(mark, text, feedback):
+    text = escape_choice(text)
     result = "({mark}) {text}".format(mark=mark, text=text)
     if feedback:
+        feedback = escape_choice(feedback)
         if "\n" in feedback or "\n" in text:
-            result += "\n// {}".format(feedback)
+            result += "\n/# {}".format(feedback)
         else:
-            result += " // {}".format(feedback)
+            result += " `/#` {}".format(feedback)
     return result
 
 
 def choice_pattern(mark):
-    return r"\({}\) *(?P<text>(.|\r?\n)*?) *(// *(?P<feedback>(.|\r?\n)*))?$".format(
+    return r"^ *\({}\) *(?P<text>(.|\r?\n)*?) *(/# *(?P<feedback>(.|\r?\n)*))?$".format(
         mark
     )
 
@@ -144,11 +155,11 @@ class ChoiceBase(PatternStringBase):
 
     def postprocess_groups(self):
         self._groups["text"] = MDStrAdapter.validate_python(
-            self._groups["text"].strip()
+            unescape_choice(self._groups["text"].strip())
         )
         if self._groups["feedback"] is not None:
             self._groups["feedback"] = MDStrAdapter.validate_python(
-                self._groups["feedback"].strip()
+                unescape_choice(self._groups["feedback"].strip())
             )
         return super().postprocess_groups()
 
@@ -161,25 +172,31 @@ class ChoiceBase(PatternStringBase):
 
 
 class SingleSelectCorrectChoice(ChoiceBase):
-    """Correct Choice in a single select question.
+    r"""Correct Choice in a single select question.
 
     The mark resembles (o) radio button.
 
-    Format: `(o) {text} // {feedback}`
+    Format: `(o) {text} /# {feedback}`
         - `text` is the choice content
         - `feedback` is optional and explains the correctness or
         details about the choice
 
     Both text and feedback can span multiple lines.
 
+    The sequence `/#` acts the feedback separater in chocies.
+    To use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.
+
     Examples:
-        - (o) correct choice // This is the correct answer
-        - (o) another correct choice
-        - |
-          (o) This is another correct choice
-          That can span muliple lines.
-          // This is going to be a multiline feedback
-          and this is the second line of the feedback
+    ```yaml
+    - (o) correct choice /# This is the correct answer
+    - (o) another correct choice
+    - |
+        (o) This is another correct choice
+        That can span muliple lines.
+        /# This is going to be a multiline feedback
+        and this is the second line of the feedback
+    - (o) This has /&#35; separator in the text.
+    ```
     """
 
     mark: ClassVar[str] = "o"
@@ -190,25 +207,31 @@ class SingleSelectCorrectChoice(ChoiceBase):
 
 
 class MultipleSelectCorrectChoice(ChoiceBase):
-    """Correct Choice in a multiple select question.
+    r"""Correct Choice in a multiple select question.
 
     The mark resembles checkboxes (x).
 
-    Format: `(x) {text} // {feedback}`
+    Format: `(x) {text} /# {feedback}`
         - `text` is the choice content
         - `feedback` is optional and explains the correctness or
         details about the choice
 
     Both text and feedback can span multiple lines.
 
+    The sequence `/#` acts the feedback separater in chocies.
+    To use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.
+
     Examples:
-        - (x) correct choice // This is the correct answer
-        - (x) another correct choice
-        - |
-          (x) This is another correct choice
-          That can span muliple lines.
-          // This is going to be a multiline feedback
-          and this is the second line of the feedback
+    ```yaml
+    - (x) correct choice /# This is the correct answer
+    - (x) another correct choice
+    - |
+        (x) This is another correct choice
+        That can span muliple lines.
+        /# This is going to be a multiline feedback
+        and this is the second line of the feedback
+    - (x) This has /&#35; separator in the text.
+    ```
     """
 
     mark: ClassVar[str] = "x"
@@ -219,23 +242,29 @@ class MultipleSelectCorrectChoice(ChoiceBase):
 
 
 class IncorrectChoice(ChoiceBase):
-    """Incorrect Choice in a multiple choice question.
+    r"""Incorrect Choice in a multiple choice question.
 
-    Format: `( ) {text} // {feedback}`
+    Format: `( ) {text} /# {feedback}`
         - `text` is the choice content
         - `feedback` is optional and explains the correctness or
         details about the choice
 
     Both text and feedback can span multiple lines.
 
+    The sequence `/#` acts the feedback separater in chocies.
+    To use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.
+
     Examples:
-        - ( ) incorrect choice // This is the incorrect answer
-        - ( ) another incorrect choice
-        - |
-          ( ) This is another incorrect choice
-          That can span muliple lines.
-          // This is going to be a multiline feedback
-          and this is the second line of the feedback.
+    ```yaml
+    - ( ) incorrect choice /# This is the incorrect answer
+    - ( ) another incorrect choice
+    - |
+        ( ) This is another incorrect choice
+        That can span muliple lines.
+        /# This is going to be a multiline feedback
+        and this is the second line of the feedback.
+    - ( ) This has /&#35; separator in the text.
+    ```
     """
 
     mark: ClassVar[str] = " "
@@ -305,7 +334,9 @@ class SingleSelectChoices(
     )
 
     @model_validator(mode="after")
-    def check(self):
+    def check(self, info: ValidationInfo):
+        if info.context and info.context.get("ignore_n_correct"):
+            return self
         assert self.n_correct == 1, (
             "Should have exactly one correct answer "
             f"but has {self.n_correct} correct answers."
@@ -340,7 +371,9 @@ class MultipleSelectChoices(
     )
 
     @model_validator(mode="after")
-    def check(self):
+    def check(self, info: ValidationInfo):
+        if info.context and info.context.get("ignore_n_correct"):
+            return self
         assert self.n_correct > 0, "Should have one or more correct answers."
         assert self.n_incorrect > 0, "Should have one or more incorrect answers."
         return self

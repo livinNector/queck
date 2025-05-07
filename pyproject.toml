@@ -1,7 +1,7 @@
 
 [project]
 name = "queck"
-version = "1.0.5"
+version = "2.0.0"
 description = "A quiz authoring format and tool with different export formats."
 readme = "README.md"
 authors = [{ name = "Livin Nector", email = "livinnector2001@gmail.com" }]
@@ -46,7 +46,7 @@ build-backend = "setuptools.build_meta"
 queck = "queck.cli:main"
 
 [project.optional-dependencies]
-genai = ["langchain-openai>=0.3.9"]
+genai = ["langchain-groq>=0.3.2", "langchain-openai>=0.3.9"]
 
 [dependency-groups]
 dev = ["ipykernel>=6.29.5", "pytest>=8.3.4", "ruff>=0.7.3"]

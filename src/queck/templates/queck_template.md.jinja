@@ -67,7 +67,7 @@
 {{-"\n\n</div>\n" if format=='html' else ''}}
 {%for question in item.questions -%}
 {{-'\n<div class="no-break">\n' if format=='html' else ''-}}
-{{ render_question(question, index+0.1*loop.index, level=3) }}
+{{ render_question(question, index~"."~loop.index, level=3) }}
 {{-"\n</div>" if format=='html' else ''-}}
 {%- endfor -%}
 {%- else -%}

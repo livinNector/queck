@@ -1,12 +1,14 @@
 import asyncio
 import os
+from io import StringIO
 from typing import Literal
 
 import fire
 from watchfiles import awatch
 
 from .live_server import LiveServer
-from .queck_models import Queck
+from .queck_models import Queck, yaml
+from .utils import write_file
 
 GENAI_ENABLED = True
 try:
@@ -29,7 +31,16 @@ class QueckCli:
     def extract(self, file_name, model=None):
         """Extracts the questions as queck from the given file."""
         if GENAI_ENABLED:
-            extract_queck(file_name, model).to_queck(file_name)
+            try:
+                extract_queck(file_name, model).to_queck(file_name)
+            except Exception as e:
+                if hasattr(e, "quiz_dump"):
+                    stream = StringIO()
+                    yaml.dump(e.quiz_dump,stream=stream)
+                    write_file(file_name, stream.getvalue(), format="queck")
+                    print(stream.getvalue())
+                raise e
+
         else:
             print(
                 "optional genai features not enabled, "
