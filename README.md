@@ -30,8 +30,9 @@
 Queck supports a variety of question types, including:
 
 - **Choice Based**
+  - The separater `/#` is used to mark option-wise feedback. To use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.
   - **Single Select Choices**\
-    list of yaml string marked with `(o)` resembling resembling radio button.
+    List of yaml string marked with `(o)` resembling resembling radio button.
 
     ```yaml
     answer:
@@ -47,8 +48,8 @@ Queck supports a variety of question types, including:
     ```yaml
     answer:
       - ( ) Option 1
-      - (x) Option 2 /# feedback for option 2f
-      - ( ) Option 3
+      - (x) Option 2 /# feedback for option 2
+      - ( ) Option 3 /# feedback for option 3
       - (x) Option 4
     ```
 

@@ -64,6 +64,17 @@ def queck_fixture():
     )
 
 
+def test_choice_feedback_escape():
+    choice = SingleSelectCorrectChoice(root="(o) option 1 /# feedback")
+    choice_with_shash = SingleSelectCorrectChoice(
+        root="(o) option 1 with /&#35; &#47;# &#47;&#35; "
+        "/# feedback with /&#35; &#47;# &#47;&#35;"
+    )
+    assert choice.feedback == "feedback"
+    assert choice_with_shash.text == "option 1 with /# /# /#"
+    assert choice_with_shash.feedback == "feedback with /# /# /#"
+
+
 @pytest.mark.parametrize(
     "choice_str, expected_text, expected_feedback, is_correct, is_single_select",
     [

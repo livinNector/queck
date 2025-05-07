@@ -119,11 +119,11 @@ class PatternStringBase(abc.ABC, RootModel):
 
 
 def escape_choice(text):
-    return re.sub(r"/#", r"\\shash", text)
+    return re.sub(r"/#", r"/&#35;", text)
 
 
 def unescape_choice(text):
-    return re.sub(r"\\shash", r"/#", text)
+    return re.sub(r"(/&#35;|&#47;#|&#47;&#35;)", r"/#", text)
 
 
 def format_choice(mark, text, feedback):
@@ -184,7 +184,7 @@ class SingleSelectCorrectChoice(ChoiceBase):
     Both text and feedback can span multiple lines.
 
     The sequence `/#` acts the feedback separater in chocies.
-    To use the literal `/#`, use the keyword `\shash` (short for slash and hash).
+    To use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.
 
     Examples:
     ```yaml
@@ -195,6 +195,7 @@ class SingleSelectCorrectChoice(ChoiceBase):
         That can span muliple lines.
         /# This is going to be a multiline feedback
         and this is the second line of the feedback
+    - (o) This has /&#35; separator in the text.
     ```
     """
 
@@ -218,7 +219,7 @@ class MultipleSelectCorrectChoice(ChoiceBase):
     Both text and feedback can span multiple lines.
 
     The sequence `/#` acts the feedback separater in chocies.
-    To use the literal `/#`, use the keyword `\shash` (short for slash and hash).
+    To use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.
 
     Examples:
     ```yaml
@@ -229,6 +230,7 @@ class MultipleSelectCorrectChoice(ChoiceBase):
         That can span muliple lines.
         /# This is going to be a multiline feedback
         and this is the second line of the feedback
+    - (x) This has /&#35; separator in the text.
     ```
     """
 
@@ -250,7 +252,7 @@ class IncorrectChoice(ChoiceBase):
     Both text and feedback can span multiple lines.
 
     The sequence `/#` acts the feedback separater in chocies.
-    To use the literal `/#`, use the keyword `\shash` (short for slash and hash).
+    To use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.
 
     Examples:
     ```yaml
@@ -261,6 +263,7 @@ class IncorrectChoice(ChoiceBase):
         That can span muliple lines.
         /# This is going to be a multiline feedback
         and this is the second line of the feedback.
+    - ( ) This has /&#35; separator in the text.
     ```
     """
 
