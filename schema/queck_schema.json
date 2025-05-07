@@ -69,7 +69,7 @@
     },
     "IncorrectChoice": {
       "default": "",
-      "description": "Incorrect Choice in a multiple choice question.\n\nFormat: `( ) {text} /# {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nThe sequence `/#` acts the feedback separater in chocies.\nTo use the literal `/#`, use the keyword `\\shash` (short for slash and hash).\n\nExamples:\n```yaml\n- ( ) incorrect choice /# This is the incorrect answer\n- ( ) another incorrect choice\n- |\n    ( ) This is another incorrect choice\n    That can span muliple lines.\n    /# This is going to be a multiline feedback\n    and this is the second line of the feedback.\n```",
+      "description": "Incorrect Choice in a multiple choice question.\n\nFormat: `( ) {text} /# {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nThe sequence `/#` acts the feedback separater in chocies.\nTo use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.\n\nExamples:\n```yaml\n- ( ) incorrect choice /# This is the incorrect answer\n- ( ) another incorrect choice\n- |\n    ( ) This is another incorrect choice\n    That can span muliple lines.\n    /# This is going to be a multiline feedback\n    and this is the second line of the feedback.\n- ( ) This has /&#35; separator in the text.\n```",
       "pattern": "^ *\\( \\) *(?<text>(.|\\r?\\n)*?) *(/# *(?<feedback>(.|\\r?\\n)*))?$",
       "title": "IncorrectChoice",
       "type": "string"
@@ -112,7 +112,7 @@
     },
     "MultipleSelectCorrectChoice": {
       "default": "",
-      "description": "Correct Choice in a multiple select question.\n\nThe mark resembles checkboxes (x).\n\nFormat: `(x) {text} /# {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nThe sequence `/#` acts the feedback separater in chocies.\nTo use the literal `/#`, use the keyword `\\shash` (short for slash and hash).\n\nExamples:\n```yaml\n- (x) correct choice /# This is the correct answer\n- (x) another correct choice\n- |\n    (x) This is another correct choice\n    That can span muliple lines.\n    /# This is going to be a multiline feedback\n    and this is the second line of the feedback\n```",
+      "description": "Correct Choice in a multiple select question.\n\nThe mark resembles checkboxes (x).\n\nFormat: `(x) {text} /# {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nThe sequence `/#` acts the feedback separater in chocies.\nTo use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.\n\nExamples:\n```yaml\n- (x) correct choice /# This is the correct answer\n- (x) another correct choice\n- |\n    (x) This is another correct choice\n    That can span muliple lines.\n    /# This is going to be a multiline feedback\n    and this is the second line of the feedback\n- (x) This has /&#35; separator in the text.\n```",
       "pattern": "^ *\\(x\\) *(?<text>(.|\\r?\\n)*?) *(/# *(?<feedback>(.|\\r?\\n)*))?$",
       "title": "MultipleSelectCorrectChoice",
       "type": "string"
@@ -265,7 +265,7 @@
     },
     "SingleSelectCorrectChoice": {
       "default": "",
-      "description": "Correct Choice in a single select question.\n\nThe mark resembles (o) radio button.\n\nFormat: `(o) {text} /# {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nThe sequence `/#` acts the feedback separater in chocies.\nTo use the literal `/#`, use the keyword `\\shash` (short for slash and hash).\n\nExamples:\n```yaml\n- (o) correct choice /# This is the correct answer\n- (o) another correct choice\n- |\n    (o) This is another correct choice\n    That can span muliple lines.\n    /# This is going to be a multiline feedback\n    and this is the second line of the feedback\n```",
+      "description": "Correct Choice in a single select question.\n\nThe mark resembles (o) radio button.\n\nFormat: `(o) {text} /# {feedback}`\n    - `text` is the choice content\n    - `feedback` is optional and explains the correctness or\n    details about the choice\n\nBoth text and feedback can span multiple lines.\n\nThe sequence `/#` acts the feedback separater in chocies.\nTo use the literal `/#`, use html code for / (&#47;) or # (&#35;) or both.\n\nExamples:\n```yaml\n- (o) correct choice /# This is the correct answer\n- (o) another correct choice\n- |\n    (o) This is another correct choice\n    That can span muliple lines.\n    /# This is going to be a multiline feedback\n    and this is the second line of the feedback\n- (o) This has /&#35; separator in the text.\n```",
       "pattern": "^ *\\(o\\) *(?<text>(.|\\r?\\n)*?) *(/# *(?<feedback>(.|\\r?\\n)*))?$",
       "title": "SingleSelectCorrectChoice",
       "type": "string"
