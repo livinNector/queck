@@ -1,5 +1,6 @@
 import asyncio
 import subprocess
+import sys
 
 import websockets
 
@@ -41,7 +42,7 @@ class LiveServer:
     # Main function to start both HTTP and WebSocket servers
     def start_http_server(self):
         self.http_server_process = subprocess.Popen(
-            ["python", "-m", "http.server", "-d", self.directory, str(self.port)]
+            [sys.executable, "-m", "http.server", "-d", self.directory, str(self.port)]
         )
 
     def start(self):
