@@ -134,7 +134,7 @@ def format_choice(mark, text, feedback):
         if "\n" in feedback or "\n" in text:
             result += "\n/# {}".format(feedback)
         else:
-            result += " `/#` {}".format(feedback)
+            result += " /# {}".format(feedback)
     return result
 
 
