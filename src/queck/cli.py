@@ -36,7 +36,7 @@ class QueckCli:
             except Exception as e:
                 if hasattr(e, "quiz_dump"):
                     stream = StringIO()
-                    yaml.dump(e.quiz_dump,stream=stream)
+                    yaml.dump(e.quiz_dump, stream=stream)
                     write_file(file_name, stream.getvalue(), format="queck")
                     print(stream.getvalue())
                 raise e

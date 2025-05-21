@@ -126,7 +126,7 @@ def unescape_choice(text):
     return re.sub(r"(/&#35;|&#47;#|&#47;&#35;)", r"/#", text)
 
 
-def format_choice(mark, text, feedback):
+def format_choice(mark, text, feedback=None):
     text = escape_choice(text)
     result = "({mark}) {text}".format(mark=mark, text=text)
     if feedback:
@@ -392,6 +392,14 @@ class TrueOrFalse(AnswerModel[bool]):
     type: ClassVar[AnswerType] = "true_false"
     root: bool
 
+    def to_single_select(self):
+        return SingleSelectChoices.model_validate(
+            [
+                format_choice("o" if self.root else " ", "True"),
+                format_choice("o" if not self.root else " ", "False"),
+            ]
+        )
+
 
 class Integer(AnswerModel[int]):
     """Numerical integer answer."""
@@ -463,3 +471,7 @@ class NumToleranceRoot(PatternStringBase):
 class NumTolerance(AnswerModel[NumToleranceRoot]):
     type: ClassVar[str] = "num_tolerance"
     root: NumToleranceRoot
+
+    def to_num_range(self):
+        value, tolerance = self.root.value, self.root.tolerance
+        return NumRange(f"{value - tolerance}..{value + tolerance}")

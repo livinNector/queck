@@ -10,6 +10,7 @@ from queck.answer_models import (
     ShortAnswer,
     SingleSelectChoices,
     SingleSelectCorrectChoice,
+    TrueOrFalse,
 )
 from queck.queck_models import (
     CommonDataQuestion,
@@ -245,6 +246,17 @@ def test_choice_groups(choices, n_correct, n_incorrect):
         multiple_choices = MultipleSelectChoices(root=choices)
         assert multiple_choices.n_correct == n_correct
         assert multiple_choices.n_incorrect == n_incorrect
+
+
+def test_conversion():
+    assert TrueOrFalse(True).to_single_select() == SingleSelectChoices(
+        ["(o) True", "( ) False"]
+    )
+
+    assert TrueOrFalse(False).to_single_select() == SingleSelectChoices(
+        ["( ) True", "(o) False"]
+    )
+    assert NumTolerance("1|.5").to_num_range() == NumRange("0.5..1.5")
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,7 @@
 
 [project]
 name = "queck"
-version = "2.0.2"
+version = "2.1.0"
 description = "A quiz authoring format and tool with different export formats."
 readme = "README.md"
 authors = [{ name = "Livin Nector", email = "livinnector2001@gmail.com" }]
