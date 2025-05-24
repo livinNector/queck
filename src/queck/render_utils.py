@@ -11,7 +11,7 @@ from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
-from pygments.lexers import get_lexer_by_name
+from pygments.lexers import get_lexer_by_name, guess_lexer
 
 from . import templates
 from .gh_alert_mdit import md_it_github_alerts
@@ -25,7 +25,7 @@ def md_format(text):
     ).strip()
 
 
-def pygments_plugin(md):
+def pygments_plugin(md, cssstyles: str = None, linenos=False):
     def render_code_block(self, tokens, idx, options, env):
         token = tokens[idx]
         content = token.content
@@ -33,7 +33,7 @@ def pygments_plugin(md):
         try:
             lexer = get_lexer_by_name(language)
         except ValueError:
-            lexer = get_lexer_by_name("text")
+            lexer = guess_lexer(content)
 
         formatter = HtmlFormatter(
             noclasses=True,
@@ -43,8 +43,12 @@ def pygments_plugin(md):
             border: thin solid #ddd;
             margin:.5rem 0;
             font-size:85%;
-            """,
+            """
+            if cssstyles is None
+            else cssstyles,
             prestyles="border:none;",
+            cssclass="",
+            linenos=linenos,
         )
 
         highlighted_code = highlight(content, lexer, formatter)
@@ -54,12 +58,14 @@ def pygments_plugin(md):
     md.add_render_rule("fence", render_code_block, fmt="html")
 
 
-def css_inline_plugin(md, css=""):
+def css_inline_plugin(md, css="", extra_css=None):
     render = md.render
+    if extra_css is None:
+        extra_css = css
 
     def inline_css(x):
         out = f"<main>{render(x)}</main>"
-        return css_inline.inline_fragment(out, css=css)
+        return css_inline.inline_fragment(out, css=css, extra_css=extra_css)
 
     md.render = inline_css
 
