@@ -20,7 +20,7 @@ from .answer_models import (
     SingleSelectChoices,
     TrueOrFalse,
 )
-from .model_utils import MDStr
+from .model_utils import DecimalNumber, MDStr
 from .render_utils import templates
 from .utils import Merger, write_file
 
@@ -112,7 +112,7 @@ class Question(QuestionBase):
         description="Optional feedback or explanation for the question. "
         "Can include solutions, hints, or clarifications.",
     )
-    marks: int | float | None = Field(
+    marks: DecimalNumber | None = Field(
         default=0,
         description="The marks assigned to this question. Defaults to 0.",
     )
@@ -192,6 +192,50 @@ class Queck(BaseModel):
             return int(m)
         return m
 
+    @staticmethod
+    def _answer_normalize(
+        questions,
+        num_type: Literal["num_range", "num_tolerance"],
+        bool_to_choice: bool = False,
+    ):
+        for question in questions:
+            match question:
+                case Question():
+                    match question.answer:
+                        case NumRange():
+                            if num_type == "num_tolerance":
+                                question.answer = question.answer.to_num_tolerance()
+                        case NumTolerance():
+                            if num_type == "num_range":
+                                question.answer = question.answer.to_num_range()
+                        case TrueOrFalse():
+                            if bool_to_choice:
+                                question.answer = question.answer.to_single_select()
+                case CommonDataQuestion():
+                    Queck._answer_normalize(
+                        question.questions,
+                        num_type=num_type,
+                        bool_to_choice=bool_to_choice,
+                    )
+
+    def normalize_answers(
+        self,
+        num_type: Literal["num_range", "num_tolerance"] | None = None,
+        bool_to_choice: bool = False,
+    ):
+        """Normalizes the answer types.
+
+        Args:
+            num_type (Literal['num_range','num_tolerance']|None):
+                Type of numeric interval to use consistently.
+                If set to `None`, num_types remains unchanged.
+            bool_to_choice (bool):
+                Whether to change true of false to Single Select Choices.
+        """
+        Queck._answer_normalize(
+            self.questions, num_type=num_type, bool_to_choice=bool_to_choice
+        )
+
     @classmethod
     def from_queck(cls, queck_str: str):
         """Loads and validates the queck YAML string.
@@ -253,7 +297,9 @@ class Queck(BaseModel):
             return result
 
     def to_md(self, file_name: str = None):
-        result = templates["md"].render(quiz=self)
+        result = templates["md"].render(
+            quiz=self.model_copy(deep=True).normalize_answers(bool_to_choice=True)
+        )
         if file_name:
             write_file(file_name, result, format="md")
         else:

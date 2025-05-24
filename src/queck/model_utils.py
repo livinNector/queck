@@ -1,6 +1,13 @@
+from decimal import Decimal
 from typing import Annotated, TypeVar
 
-from pydantic import AfterValidator, Json, TypeAdapter, WrapSerializer
+from pydantic import (
+    AfterValidator,
+    Json,
+    PlainSerializer,
+    TypeAdapter,
+    WrapSerializer,
+)
 from pydantic.json_schema import GenerateJsonSchema
 
 from .render_utils import md, md_format
@@ -54,6 +61,17 @@ MDStrAdapter = TypeAdapter(MDStr)
 T = TypeVar("T")
 
 
-Number = int | float
+def dec_to_num(d: Decimal):
+    d = str(d)
+    try:
+        return int(d)
+    except ValueError:
+        return float(d)
 
-NumberAdapter = TypeAdapter(Number)
+
+DecimalNumber = Annotated[
+    Decimal,
+    PlainSerializer(dec_to_num, return_type=int | float),
+]
+
+DecimalNumberAdapter = TypeAdapter(DecimalNumber)

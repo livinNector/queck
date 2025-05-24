@@ -1,4 +1,4 @@
-from typing import Any, ClassVar
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -11,54 +11,17 @@ from pydantic import (
     model_validator,
 )
 
-from .answer_models import AnswerType, ChoiceType, format_choice
-from .model_utils import MDStr, Number, NumberAdapter
+from .answer_models import (
+    AnswerType,
+    ChoiceParsed,
+    NumRangeParsed,
+    NumToleranceParsed,
+)
+from .model_utils import DecimalNumber, MDStr
 
-
-class FormattedModel(BaseModel):
-    format: ClassVar[str]
-
-    @property
-    def formatted(self) -> str:
-        value = self.model_dump()
-        if isinstance(value, dict):
-            return self.format.format(**value)
-        return value
-
-    @model_serializer(mode="wrap")
-    def ser_formatted(
-        self,
-        nxt: SerializerFunctionWrapHandler,
-        info: SerializationInfo,
-    ) -> str | Any:
-        context = info.context
-        if context is not None and context.get("formatted", False):
-            return self.formatted
-        return nxt(self)
-
-
-class Choice(BaseModel):
-    text: MDStr
-    is_correct: bool
-    feedback: MDStr | None = None
-    type: ChoiceType | None = None
-
-    @model_serializer(mode="wrap")
-    def ser_formatted(
-        self,
-        nxt: SerializerFunctionWrapHandler,
-        info: SerializationInfo,
-    ) -> str | Any:
-        context = info.context
-        if not self.is_correct:
-            mark = " "
-        elif self.type == "multiple_select":
-            mark = "x"
-        else:
-            mark = "o"
-        if context is not None and context.get("formatted", False):
-            return format_choice(mark, self.text, self.feedback)
-        return nxt(self)
+type Choice = ChoiceParsed
+type NumRange = NumRangeParsed
+type NumTolerance = NumToleranceParsed
 
 
 class Choices(RootModel):
@@ -85,40 +48,6 @@ class Choices(RootModel):
         assert value.n_correct > 0, "Atleast one choice must be correct"
         assert value.n_correct < len(value.root), "All choices should not be correct"
         return value
-
-
-class NumRange(FormattedModel):
-    high: Number
-    low: Number
-    format: ClassVar[str] = "{low}..{high}"
-
-    @model_validator(mode="before")
-    @classmethod
-    def parse(cls, value):
-        if isinstance(value, str):
-            low, high = sorted(map(NumberAdapter.validate_python, value.split("..")))
-            return {"high": high, "low": low}
-        elif isinstance(value, dict):
-            return value
-        else:
-            raise ValueError("Not a str or dict")  # improve error message
-
-
-class NumTolerance(FormattedModel):
-    value: Number
-    tolerance: Number
-    format: ClassVar[str] = "{value}|{tolerance}"
-
-    @model_validator(mode="before")
-    @classmethod
-    def parse(cls, value):
-        if isinstance(value, str):
-            value, low = map(NumberAdapter.validate_python, value.split("|"))
-            return {"value": value, "tol": low}
-        elif isinstance(value, dict):
-            return value
-        else:
-            raise ValueError("Not a str or dict")
 
 
 class Answer(BaseModel):
@@ -162,11 +91,11 @@ class Question(BaseModel):
     text: MDStr
     answer: Answer
     feedback: str | None = ""
-    marks: int | float | None = 0
+    marks: DecimalNumber | None = 0
     tags: list[str] | None = Field(default_factory=list)
 
 
-class QuestionGroup(BaseModel):
+class QuestionGroup:
     """Base class for question containers."""
 
     questions: list[Question]
@@ -178,15 +107,16 @@ class QuestionGroup(BaseModel):
         )
 
 
-class CommonDataQuestion(QuestionGroup):
-    # type: Literal["common_data"] = "common_data"
+class CommonDataQuestion(QuestionGroup, BaseModel):
+    type: Literal["common_data"] = "common_data"
     text: MDStr
+    questions: list[Question]
 
 
 class Description(BaseModel):
     text: MDStr
 
 
-class Quiz(QuestionGroup):
+class Quiz(QuestionGroup, BaseModel):
     title: str
     questions: list[Question | CommonDataQuestion | Description]
