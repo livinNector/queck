@@ -6,6 +6,7 @@ from pydantic import (
     Json,
     PlainSerializer,
     TypeAdapter,
+    ValidationInfo,
     WrapSerializer,
 )
 from pydantic.json_schema import GenerateJsonSchema
@@ -50,9 +51,15 @@ def md_render(value, handler, info):
     return value
 
 
+def _md_format_validator(x, info: ValidationInfo):
+    if info.context and info.context.get("format_md", False):
+        return md_format(x)
+    return x
+
+
 MDStr = Annotated[
     str,
-    AfterValidator(md_format),
+    AfterValidator(_md_format_validator),
     WrapSerializer(md_render),
 ]
 
@@ -69,8 +76,17 @@ def dec_to_num(d: Decimal):
         return float(d)
 
 
+def non_exponent_normalize(d: Decimal):
+    # decimal normalize turns multiples of 10 to scientific notation.
+    if d % 10 == 0:
+        return Decimal(int(d))
+    else:
+        return d.normalize()
+
+
 DecimalNumber = Annotated[
     Decimal,
+    AfterValidator(non_exponent_normalize),
     PlainSerializer(dec_to_num, return_type=int | float),
 ]
 

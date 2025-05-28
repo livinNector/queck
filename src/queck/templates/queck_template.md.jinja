@@ -74,7 +74,7 @@
 {%- endif -%}
 {%- endfor -%}
 {% endmacro -%}
-{% if format == 'md' -%}
+{% if format_md -%}
 {%filter mdformat-%}
 {{render_quiz()}}
 {%endfilter-%}
