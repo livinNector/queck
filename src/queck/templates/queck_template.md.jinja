@@ -17,9 +17,6 @@
     _{{ choice.feedback }}_
     {%- endif -%}
 {%- endfor -%}
-{%- elif answer.type == "true_false" %}
-- [{{ 'x' if answer else ' '  }}] True
-- [{{ 'x' if not answer else ' '  }}] False
 {%- elif answer.type == "num_int" %}
 **Answer:** ${{ answer.value }}$
 {%- elif answer.type == "num_range" %}
@@ -38,10 +35,9 @@
 {%-set questions = quiz.questions|selectattr('type', "equalto", type) | list -%}
 | {{name}} | {{ questions | length }} | {{questions | map(attribute='marks') | sum}} |
 {%-endmacro -%}
-{%block body-%}
-{%filter mdformat%}
+{% macro render_quiz()%}
 # {{ quiz.title }} {%if quiz.marks %}({{quiz.marks}} marks){%endif%}
-
+{% if overview%}
 ## Overview
 
 | Question Type       | Count | Marks|
@@ -53,6 +49,7 @@
 {{overview_row('Common Data','common_data')}}
 
 ---
+{% endif -%}
 {% set question_count = 0 -%}
 {%- for item in quiz.questions -%}
 {%- if item.type == "common_data" -%}
@@ -76,5 +73,11 @@
 {{-"\n</div>\n" if format=='html' else ''-}}
 {%- endif -%}
 {%- endfor -%}
-{%endfilter%}
-{%endblock body%}
+{% endmacro -%}
+{% if format == 'md' -%}
+{%filter mdformat-%}
+{{render_quiz()}}
+{%endfilter-%}
+{% else -%}
+{{render_quiz()}}
+{%- endif%}

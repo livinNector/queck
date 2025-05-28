@@ -6,7 +6,6 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from markdown_it import MarkdownIt
 from markdown_it.common.utils import escapeHtml
 from mdit_py_plugins.amsmath import amsmath_plugin
-from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight
@@ -76,20 +75,15 @@ def dollor_math_renderer(content, config):
     return f"{delimeter}{escapeHtml(content)}{delimeter}"
 
 
-def get_base_md():
+def get_base_md(math_renderer=None):
+    if math_renderer is None:
+        math_renderer = dollor_math_renderer
     return (
         MarkdownIt("gfm-like")
-        .use(tasklists_plugin, enabled=True)
-        .use(container_plugin, name="no-break")
-        .use(md_it_github_alerts)
-    )
-
-
-def get_fast_md():
-    return (
-        get_base_md()
         .use(dollarmath_plugin, renderer=dollor_math_renderer, double_inline=True)
-        .use(amsmath_plugin)
+        .use(amsmath_plugin, renderer=dollor_math_renderer)
+        .use(tasklists_plugin, enabled=True)
+        .use(md_it_github_alerts)
     )
 
 
@@ -98,10 +92,9 @@ default_css = (
     + files(templates).joinpath("default.css").read_text()
 )
 md = {}
-md["base"] = get_base_md()
-md["fast"] = get_fast_md()
+md["fast"] = get_base_md()
 md["compat"] = (
-    get_fast_md().use(pygments_plugin).use(css_inline_plugin, css=default_css)
+    get_base_md().use(pygments_plugin).use(css_inline_plugin, css=default_css)
 )
 
 
@@ -109,16 +102,14 @@ def get_template_env(**filters):
     env = Environment(
         loader=PackageLoader("queck", "templates"), autoescape=select_autoescape()
     )
-    env.filters["chr"] = chr
     env.filters.update(filters)
     return env
 
 
 templates = {}
 templates["md"] = get_template_env(mdformat=md_format).get_template(
-    "queck_template.md.jinja"
+    "queck_template.md.jinja", globals={"format": "md"}
 )
-templates["queck"] = get_template_env().get_template("queck_template.yaml.jinja")
 templates["fast"] = get_template_env(
     md=md["fast"].render, mdformat=md_format
 ).get_template(
