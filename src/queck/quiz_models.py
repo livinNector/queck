@@ -13,13 +13,12 @@ from pydantic import (
 
 from .answer_models import (
     AnswerType,
-    ChoiceParsed,
+    Choice,
     NumRangeParsed,
     NumToleranceParsed,
 )
 from .model_utils import DecimalNumber, MDStr
 
-type Choice = ChoiceParsed
 type NumRange = NumRangeParsed
 type NumTolerance = NumToleranceParsed
 

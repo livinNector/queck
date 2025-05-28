@@ -149,7 +149,7 @@ def choice_pattern(mark):
 ChoiceType = Literal["single_select", "multiple_select"]
 
 
-class ChoiceParsed(ParsedModelBase, title="Choice"):
+class Choice(ParsedModelBase):
     text: MDStr
     is_correct: bool
     feedback: MDStr | None = None
@@ -172,7 +172,7 @@ class ChoiceBase(PatternStringBase):
     type: ClassVar[ChoiceType | None] = None
     is_correct: ClassVar[bool]
     type: ClassVar[ChoiceType | None]
-    parsed_type: ClassVar = ChoiceParsed
+    parsed_type: ClassVar = Choice
     parsed_extra = ["is_correct", "type"]
 
     text = PatternStringBase.parsed_property("text")
