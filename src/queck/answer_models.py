@@ -94,14 +94,15 @@ class PatternStringBase(abc.ABC, RootModel):
     _parsed: ParsedModelBase  # used when serialzed in parsed mode.
 
     @property
-    def parsed(self):
+    def parsed(self) -> ParsedModelBase:
         return self._parsed
 
     @model_validator(mode="after")
-    def cache_parsed(self):
-        self._parsed = self.parsed_type(
-            **re.match(self.pattern, self.root).groupdict(),
-            **{attr: getattr(self, attr) for attr in self.parsed_extra},
+    def cache_parsed(self, info: ValidationInfo):
+        self._parsed = self.parsed_type.model_validate(
+            re.match(self.pattern, self.root).groupdict()
+            | {attr: getattr(self, attr) for attr in self.parsed_extra},
+            context=info.context,
         )
         self.root = self.parsed.formatted
         return self
