@@ -60,7 +60,14 @@ class AnswerModel[T](RootModel[T]):
 
 
 def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
-    return Field(default="", pattern=re.sub(r"\?P", "?", pattern), **kwargs)
+    return Field(
+        default="",
+        pattern=pattern.replace(
+            "?P",
+            "?",
+        ).replace("/", "\\/"),
+        **kwargs,
+    )
 
 
 class ParsedModelBase(BaseModel):
