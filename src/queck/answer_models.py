@@ -142,8 +142,9 @@ def format_choice(mark, text, feedback=None):
 
 
 def choice_pattern(mark):
-    return r"^\s*\({}\)\s*(?P<text>(.|\r?\n)*?)\s*(/# *(?P<feedback>(.|\r?\n)*))?\s*$".format(
-        mark
+    return (
+        r"^\s*\({}\)\s*(?P<text>(.|\r?\n)*?)\s*"
+        r"(/#\s*(?P<feedback>(.|\r?\n)*?))?\s*$".format(mark)
     )
 
 
