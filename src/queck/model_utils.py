@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Annotated, TypeVar
+from typing import Annotated
 
 from pydantic import (
     AfterValidator,
@@ -64,8 +64,6 @@ MDStr = Annotated[
 ]
 
 MDStrAdapter = TypeAdapter(MDStr)
-
-T = TypeVar("T")
 
 
 def dec_to_num(d: Decimal):

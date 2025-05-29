@@ -15,7 +15,7 @@ from pydantic import (
     model_validator,
 )
 
-from .model_utils import DecimalNumber, MDStr, T
+from .model_utils import DecimalNumber, MDStr
 
 AnswerType = Literal[
     "single_select_choices",
@@ -35,7 +35,7 @@ class Answer[T]:
     type: AnswerType
 
 
-class AnswerModel(RootModel[T]):
+class AnswerModel[T](RootModel[T]):
     """Same as RootModel but adds and alias value to root attribute of root model."""
 
     root: T
@@ -156,6 +156,13 @@ class Choice(ParsedModelBase):
     is_correct: bool
     feedback: MDStr | None = None
     type: ChoiceType | None = None
+
+    @model_validator(mode="after")
+    def unescape(self):
+        self.text = unescape_choice(self.text)
+        if self.feedback is not None:
+            self.feedback = unescape_choice(self.feedback)
+        return self
 
     @property
     def mark(self):
