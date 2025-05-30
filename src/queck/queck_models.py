@@ -24,9 +24,9 @@ from .model_utils import DecimalNumber, MDStr
 from .render_utils import templates
 from .utils import Merger, write_file
 
-yaml = YAML(typ="rt", plug_ins=[])
-yaml.default_flow_style = False
-yaml.indent(mapping=2, sequence=4, offset=2)
+ru_yaml = YAML(typ="rt", plug_ins=[])
+ru_yaml.default_flow_style = False
+ru_yaml.indent(mapping=2, sequence=4, offset=2)
 
 
 def _str_presenter(dumper, data):
@@ -43,7 +43,7 @@ def _str_presenter(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
 
-yaml.representer.add_representer(str, _str_presenter)
+ru_yaml.representer.add_representer(str, _str_presenter)
 
 
 def load_yaml(content):
@@ -248,48 +248,60 @@ class Queck(BaseModel):
         return queck
 
     @classmethod
-    def from_queck(cls, queck_str: str):
+    def from_queck(cls, queck_str: str, format_md: bool = False, round_trip=False):
         """Loads and validates the queck YAML string.
 
         Args:
             queck_str(str): the queck YAML string.
+            format_md(bool): Format the MDStr fields using mdformat.
+            round_trip (bool):
+                Whether to enable round trip parsing, preserving comments.
+                If enabled ruamel parser is used, else pyyaml is used.
 
         Returns:
-            Quiz: Validated Quiz object if successful.
+            Queck: Validated Queck object if successful.
 
         Raises:
             ValidationError: if validation is not successfull
         """
-        yaml_content = load_yaml(queck_str)
-        result = cls.model_validate(yaml_content)
-        result._yaml_content = yaml_content
+        if round_trip:
+            yaml_content = ru_yaml.load(queck_str)
+        else:
+            yaml_content = yaml.safe_load(queck_str)
+        result = cls.model_validate(yaml_content, context={"format_md": format_md})
+        if round_trip:
+            result._yaml_content = yaml_content
         return result
 
     @classmethod
-    def read_queck(cls, queck_file):
+    def read_queck(cls, queck_file, format_md: bool = False, round_trip=False):
         """Loads and validates the queck YAML file.
 
         Args:
             queck_file (str): Path to the queck YAML file.
+            format_md(bool): Format the MDStr fields using mdformat.
+            round_trip (bool):
+                Whether to enable round trip parsing, preserving comments.
+                If enabled ruamel parser is used, else pyyaml is used.
 
         Returns:
-            Quiz: Validated Quiz object if successful.
+            Queck: Validated Queck object if successful.
 
         Raises:
             ValidationError: if validation is not successfull
         """
         with open(queck_file, "r") as f:
-            return cls.from_queck(f.read())
+            return cls.from_queck(f.read(), format_md=format_md, round_trip=round_trip)
 
     def to_queck(self, file_name: str = None):
         result = io.StringIO()
         if self._yaml_content is None:
-            yaml.dump(self.model_dump(exclude_defaults=True), result)
+            ru_yaml.dump(self.model_dump(exclude_defaults=True), result)
         else:
-            Merger(extend_lists=True, extend_dicts=False).merge(
+            Merger(extend_lists=True, extend_dicts=True).merge(
                 self._yaml_content, self.model_dump(exclude_defaults=True)
             )
-            yaml.dump(self._yaml_content, result)
+            ru_yaml.dump(self._yaml_content, result)
         result = result.getvalue()
         if file_name:
             write_file(file_name, result, format="queck")
