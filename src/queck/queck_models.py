@@ -304,18 +304,21 @@ class Queck(BaseModel):
             ru_yaml.dump(self._yaml_content, result)
         result = result.getvalue()
         if file_name:
-            write_file(file_name, result, format="queck")
+            write_file(file_name, result, extension="qk")
         else:
             return result
 
     def to_json(
-        self,
-        file_name: str = None,
-        parsed: bool = False,
+        self, file_name: str = None, parsed: bool = False, rendered: bool = False
     ):
-        result = self.model_dump_json(indent=2, context={"parsed": parsed})
+        result = self.model_dump_json(
+            indent=2, context={"parsed": parsed, "rendered": rendered}
+        )
         if file_name:
-            write_file(file_name, result, format="json")
+            if parsed:
+                write_file(file_name, result, extension="json")
+            else:
+                write_file(file_name, result, extension="qk.json")
         else:
             return result
 
