@@ -83,13 +83,13 @@ class ParsedModelBase(BaseModel):
     @model_serializer(mode="wrap")
     def ser_formatted(
         self,
-        nxt: SerializerFunctionWrapHandler,
+        handler: SerializerFunctionWrapHandler,
         info: SerializationInfo,
-    ) -> str | Any:
+    ) -> str | dict[str, Any]:
         context = info.context
         if context is not None and context.get("formatted", False):
             return self.formatted
-        return nxt(self)
+        return handler(self, info)
 
 
 class PatternStringBase(abc.ABC, RootModel):
@@ -117,8 +117,10 @@ class PatternStringBase(abc.ABC, RootModel):
     @model_serializer(mode="plain")
     def ser_parsed(self, info: SerializationInfo) -> str | dict:
         context = info.context
-        parsed = context is not None and context.get("parsed", False)
-        return self.parsed.model_dump(context={"formatted": not parsed})
+        parsed = context and context.get("parsed", False)
+        return self.parsed.model_dump(
+            context={"formatted": not parsed, **(context or {})}
+        )
 
     @staticmethod
     def parsed_property(name):
