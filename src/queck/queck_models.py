@@ -222,7 +222,8 @@ class Queck(BaseModel):
         self,
         num_type: Literal["num_range", "num_tolerance"] | None = None,
         bool_to_choice: bool = False,
-    ):
+        copy=False,
+    ) -> "Queck":
         """Normalizes the answer types.
 
         Args:
@@ -231,10 +232,20 @@ class Queck(BaseModel):
                 If set to `None`, num_types remains unchanged.
             bool_to_choice (bool):
                 Whether to change true of false to Single Select Choices.
+            copy (bool):
+                Whether to return a new queck instead of modifying the original.
+
+        Returns:
+            Queck: The normalized Queck object.
         """
+        if copy:
+            queck = self.model_copy(deep=True)
+        else:
+            queck = self
         Queck._answer_normalize(
-            self.questions, num_type=num_type, bool_to_choice=bool_to_choice
+            queck.questions, num_type=num_type, bool_to_choice=bool_to_choice
         )
+        return queck
 
     @classmethod
     def from_queck(cls, queck_str: str):
