@@ -317,19 +317,16 @@ class ChoicesBase(AnswerModel):
     def __iter__(self):
         return iter(self.root)
 
+    def __len__(self):
+        return len(self.root)
+
     @property
     def n_correct(self):
-        return sum(
-            1
-            for choice in self.root
-            if isinstance(
-                choice, (SingleSelectCorrectChoice, MultipleSelectCorrectChoice)
-            )
-        )
+        return sum(1 for choice in self if choice.is_correct)
 
     @property
     def n_incorrect(self):
-        return len(self.root) - self.n_correct
+        return len(self) - self.n_correct
 
 
 # manually defining json schema as contians is not included in pydantic yet.
