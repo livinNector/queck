@@ -1,11 +1,11 @@
 import os
 
 
-def safe_write_file(file_name, content, format=None, force=False):
+def safe_write_file(file_name, content, extension=None, force=False):
     """Writes to a file without overwriting it."""
-    if format is not None:
+    if extension is not None:
         base, ext = os.path.splitext(file_name)
-        file_name = f"{base}.{format}"
+        file_name = f"{base}.{extension}"
 
     if os.path.exists(file_name) and not force:
         raise FileExistsError(f"{file_name} already exists. ")
@@ -13,8 +13,8 @@ def safe_write_file(file_name, content, format=None, force=False):
         f.write(content)
 
 
-def write_file(file_name, content, format=None):
-    safe_write_file(file_name, content, format, force=True)
+def write_file(file_name, content, extension=None):
+    safe_write_file(file_name, content, extension, force=True)
 
 
 class Merger:
