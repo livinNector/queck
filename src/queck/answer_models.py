@@ -88,7 +88,7 @@ class ParsedModelBase(BaseModel):
     ) -> str | dict[str, Any]:
         context = info.context
         if context is not None and context.get("formatted", False):
-            return self.formatted
+            return self.format.format(**handler(self, info))
         return handler(self, info)
 
 
@@ -184,6 +184,18 @@ class Choice(ParsedModelBase):
     @property
     def formatted(self) -> str:
         return format_choice(self.mark, self.text, self.feedback)
+
+    @model_serializer(mode="wrap")
+    def ser_formatted(
+        self,
+        handler: SerializerFunctionWrapHandler,
+        info: SerializationInfo,
+    ) -> str | dict[str, Any]:
+        context = info.context
+        if context is not None and context.get("formatted", False):
+            result = handler(self, info)
+            return format_choice(self.mark, result["text"], result["feedback"])
+        return handler(self, info)
 
 
 class ChoiceBase(PatternStringBase):
