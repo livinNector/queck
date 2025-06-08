@@ -1,17 +1,44 @@
+import io
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Any
 
+import yaml
+from markdown_it import MarkdownIt
 from pydantic import (
     AfterValidator,
+    BaseModel,
     Json,
     PlainSerializer,
     TypeAdapter,
     ValidationInfo,
-    WrapSerializer,
 )
 from pydantic.json_schema import GenerateJsonSchema
+from ruamel.yaml import YAML
 
-from .render_utils import md, md_format
+from .render_utils import md_format, mdit_renderers
+from .utils import Merger, write_file
+
+ru_yaml = YAML(typ="rt", plug_ins=[])
+ru_yaml.default_flow_style = False
+ru_yaml.indent(mapping=2, sequence=4, offset=2)
+
+
+def _str_presenter(dumper, data):
+    """Preserve multiline strings when dumping yaml.
+
+    https://github.com/yaml/pyyaml/issues/240
+    """
+    if "\n" in data:
+        # Remove trailing spaces messing out the output.
+        block = "\n".join([line.rstrip() for line in data.splitlines()])
+        if data.endswith("\n"):
+            block += "\n"
+        return dumper.represent_scalar("tag:yaml.org,2002:str", block, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+ru_yaml.representer.add_representer(str, _str_presenter)
+
 
 JsonAdapter = TypeAdapter(Json)
 
@@ -44,10 +71,11 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
         return remove_defaults(schema)
 
 
-def md_render(value, handler, info):
+def _md_render_serializer(value, info):
     if info.context and info.context.get("rendered", False):
-        renderer = info.context.get("renderer") or md["fast"]
-        return renderer.render(value)
+        renderer: MarkdownIt = info.context.get("renderer", mdit_renderers["fast"])
+        env = info.context.get("render_env")
+        return renderer.render(value, env)
     return value
 
 
@@ -60,7 +88,7 @@ def _md_format_validator(x, info: ValidationInfo):
 MDStr = Annotated[
     str,
     AfterValidator(_md_format_validator),
-    WrapSerializer(md_render),
+    PlainSerializer(_md_render_serializer),
 ]
 
 MDStrAdapter = TypeAdapter(MDStr)
@@ -89,3 +117,57 @@ DecimalNumber = Annotated[
 ]
 
 DecimalNumberAdapter = TypeAdapter(DecimalNumber)
+
+
+# TODO: Add to md and html seamlessly with this model
+class YamlJsonIOModel(BaseModel):
+    _yaml_content: Any | None = None  # Only used for round trip parsing.
+
+    @classmethod
+    def from_yaml(cls, yaml_str: str, format_md: bool = False, round_trip=False):
+        if round_trip:
+            yaml_content = ru_yaml.load(yaml_str)
+        else:
+            yaml_content = yaml.safe_load(yaml_str)
+        result = cls.model_validate(yaml_content, context={"format_md": format_md})
+        if round_trip:
+            result._yaml_content = yaml_content
+        return result
+
+    @classmethod
+    def read_yaml(cls, yaml_file, format_md: bool = False, round_trip=False):
+        with open(yaml_file, "r") as f:
+            return cls.from_yaml(f.read(), format_md=format_md, round_trip=round_trip)
+
+    @staticmethod
+    def to_file_or_str(content, file_name: str = None, extension: str = None):
+        if file_name:
+            write_file(file_name, content, extension=extension)
+        else:
+            return content
+
+    def to_yaml(self, file_name: str = None, extension="yaml"):
+        result = io.StringIO()
+        if self._yaml_content is None:
+            ru_yaml.dump(self.model_dump(exclude_defaults=True), result)
+        else:
+            Merger(extend_lists=True, extend_dicts=True).merge(
+                self._yaml_content, self.model_dump(exclude_defaults=True)
+            )
+            ru_yaml.dump(self._yaml_content, result)
+        self.to_file_or_str(result.getvalue(), file_name=file_name, extension=extension)
+
+    def to_json(
+        self,
+        file_name: str = None,
+        parsed: bool = False,
+        rendered: bool = False,
+        extension="json",
+    ):
+        return self.to_file_or_str(
+            self.model_dump_json(
+                indent=2, context={"parsed": parsed, "rendered": rendered}
+            ),
+            file_name=file_name,
+            extension=extension,
+        )
