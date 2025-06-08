@@ -1,11 +1,12 @@
+import json
 from importlib.resources import files
 
 import css_inline
 import mdformat
-from jinja2 import Environment, PackageLoader, select_autoescape
+from jinja2 import Environment, PackageLoader, Template, select_autoescape
 from markdown_it import MarkdownIt
 from markdown_it.common.utils import escapeHtml
-from mdit_py_plugins.amsmath import amsmath_plugin
+from mdformat_gfm_alerts.mdit_plugins import gfm_alerts_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight
@@ -13,7 +14,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
 
 from . import templates
-from .gh_alert_mdit import md_it_github_alerts
+from .mdit_plugins import css_inline_plugin, fence_default_lang_plugin, pygments_plugin
 
 
 def md_format(text):
@@ -24,66 +25,26 @@ def md_format(text):
     ).strip()
 
 
-def pygments_plugin(md, cssstyles: str = None, linenos=False):
-    def render_code_block(self, tokens, idx, options, env):
-        token = tokens[idx]
-        content = token.content
-        language = token.info.strip() if token.info else "text"
-        try:
-            lexer = get_lexer_by_name(language)
-        except ValueError:
-            lexer = guess_lexer(content)
-
-        formatter = HtmlFormatter(
-            noclasses=True,
-            cssstyles="""
-            padding:10px;
-            border-radius:5px;
-            border: thin solid #ddd;
-            margin:.5rem 0;
-            font-size:85%;
-            """
-            if cssstyles is None
-            else cssstyles,
-            prestyles="border:none;",
-            cssclass="",
-            linenos=linenos,
-        )
-
-        highlighted_code = highlight(content, lexer, formatter)
-
-        return highlighted_code
-
-    md.add_render_rule("fence", render_code_block, fmt="html")
-
-
-def css_inline_plugin(md, css="", extra_css=None):
-    render = md.render
-    if extra_css is None:
-        extra_css = css
-
-    def inline_css(x):
-        out = f"<main>{render(x)}</main>"
-        return css_inline.inline_fragment(out, css=css, extra_css=extra_css)
-
-    md.render = inline_css
-
-
-def dollor_math_renderer(content, config):
-    display_mode = config["display_mode"]
+def dollarmath_renderer(content, config=None):
+    display_mode = config and config.get("display_mode", False)
     delimeter = "$$" if display_mode else "$"
     return f"{delimeter}{escapeHtml(content)}{delimeter}"
 
 
-def get_base_md(math_renderer=None):
+def get_base_md(math_renderer=None, default_code_lang=None):
     if math_renderer is None:
-        math_renderer = dollor_math_renderer
+        math_renderer = dollarmath_renderer
+    if default_code_lang is None:
+        default_code_lang = "text"
     return (
         MarkdownIt("gfm-like")
-        .use(dollarmath_plugin, renderer=dollor_math_renderer, double_inline=True)
-        .use(amsmath_plugin, renderer=dollor_math_renderer)
+        .use(fence_default_lang_plugin, default_lang=default_code_lang)
+        .use(dollarmath_plugin, renderer=math_renderer, double_inline=True)
         .use(tasklists_plugin, enabled=True)
-        .use(md_it_github_alerts)
+        .use(
+            gfm_alerts_plugin,
+            icons=json.loads(files(templates).joinpath("gh_alerts.json").read_text()),
+        )
     )
 
 
