@@ -194,7 +194,7 @@ class Choice(ParsedModelBase):
         context = info.context
         if context is not None and context.get("formatted", False):
             result = handler(self, info)
-            return format_choice(self.mark, result["text"], result["feedback"])
+            return format_choice(self.mark, result["text"], result.get("feedback"))
         return handler(self, info)
 
 
