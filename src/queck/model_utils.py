@@ -155,7 +155,7 @@ class YamlJsonIOModel(BaseModel):
                 self._yaml_content, self.model_dump(exclude_defaults=True)
             )
             ru_yaml.dump(self._yaml_content, result)
-        self.to_file_or_str(result.getvalue(), file_name=file_name, extension=extension)
+        return self.to_file_or_str(result.getvalue(), file_name=file_name, extension=extension)
 
     def to_json(
         self,
