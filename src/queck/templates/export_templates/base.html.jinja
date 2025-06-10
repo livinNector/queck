@@ -5,10 +5,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{data.title}}</title>
-  {%if render_mode in ["fast", 'latex']%}
-  {%include "hljs_includes.html"%}
-  {%endif%}
-  {%include "katex_includes.html"%}
   <script>
     window.onload = () => {
       document.querySelectorAll('.contains-task-list input[type="checkbox"]').forEach((checkbox) => {
@@ -21,37 +17,8 @@
   <style>
     {% include 'base.css' %}
   </style>
-  {%if render_mode == 'fast'%}
-  <style>
-    {% include 'default.css' %}
-  </style>
-  {%endif%}
-  {{render_mode}}
-  {%if render_mode== 'latex'%}
-  <link rel="stylesheet" href="https://latex.vercel.app/style.css">
-  <style>
-    main {
-      font-size: 12pt;
-      font-family: inherit;
-    }
-    pre {
-      margin: .5rem 0;
-      padding: 0;
-      border: thin solid #ddd;
-      border-radius: 5px;
-    }
 
-    body {
-      /* from bootstrap*/
-      max-width: 768px;
-      padding: 20px;
-      margin: auto;
-      background: none;
-    }
-
-  </style>
-  {%endif%}
-
+  {% block includes %}{% endblock%}
 
   {# For Live reload #}
   <script>

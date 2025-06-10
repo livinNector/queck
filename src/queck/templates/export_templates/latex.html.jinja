@@ -1,0 +1,28 @@
+{% extends "export_templates/base.html.jinja" %}
+
+{% block includes %}
+{%include "hljs_includes.html"%}
+{%include "katex_includes.html"%}
+<link rel="stylesheet" href="https://latex.vercel.app/style.css">
+<style>
+  main {
+    font-size: 12pt;
+    font-family: inherit;
+  }
+
+  pre {
+    margin: .5rem 0;
+    padding: 0;
+    border: thin solid #ddd;
+    border-radius: 5px;
+  }
+
+  body {
+    /* from bootstrap*/
+    max-width: 768px;
+    padding: 20px;
+    margin: auto;
+    background: none;
+  }
+</style>
+{% endblock includes %}

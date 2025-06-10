@@ -15,16 +15,16 @@
 
 ---
 {%- endmacro %}
-{% macro render_question(question, index=none, level=1) %}
+{% macro render_question(question, index=none, level=1,for_html_export=false) %}
 {{"#"*level}}{%if index%} Question {{ index }}{%endif%} [{{ question.type.split('_') | join(" ") | title }}]{%if question.marks %} ({{question.marks}} marks){%endif%}
 
 {%if question.tags-%}
 ***Tags:*** {% set comma = joiner(", ") -%}{%for tag in question.tags%}{{comma()}}`{{tag}}`{%endfor %}
 
 {%endif -%}
-{{-'\n<div class="fit-width">\n\n' if format=='html' else ''-}}
+{{-'\n<div class="fit-width">\n\n' if for_html_export else ''-}}
 {{ question.text }}  
-{{"\n\n</div>\n" if format=='html' else ''-}}
+{{"\n\n</div>\n" if for_html_export else ''-}}
 {% set answer = question.answer or None -%}
 {% if answer.type in ['single_select_choices','multiple_select_choices'] -%}
 {%- for choice in answer.root %}
@@ -44,11 +44,30 @@
 **Answer:** {{ answer.value }}
 {%- endif %}
 {%if question.feedback %}
+{{'<div class="no-break">\n' if for_html_export else ''-}}
 **Feedback**  
 {{ question.feedback }}
+{{'<div>\n' if for_html_export else ''-}}
 {% endif -%}
 {% endmacro -%}
-{%- macro render_quiz(quiz,overview,format)-%}
+
+{%- macro render_common_data_question(question, index, for_html_export=false)%}
+{{-'<div class="no-break">\n' if for_html_export else ''}}
+## {%if index%}Question {{index}} {%endif%}[Common Data]{%if question.marks %} ({{question.marks}} marks){%endif%}
+
+### Common data{%if index%} for {{index}}.1 to {{index}}.{{question.questions |length}}{%endif%}
+
+{{'\n<div class="fit-width">\n\n' if for_html_export else ''-}}
+{{ question.text }}
+{{-"\n\n</div>\n" if for_html_export else ''}}
+{%for inner_question in question.questions -%}
+{{-'\n<div class="no-break">\n' if for_html_export else ''-}}
+{{ render_question(inner_question, index~"."~loop.index if index else loop.index, level=3, for_html_export=for_html_export) }}
+{{-"\n</div>" if for_html_export else ''-}}
+{%- endfor -%}
+{% endmacro -%}
+
+{%- macro render_quiz(quiz,overview,for_html_export=false)-%}
 
 # {{ quiz.title }} {%if quiz.marks %}({{quiz.marks}} marks){%endif%}
 {% if overview%}
@@ -58,23 +77,11 @@
 {%- for item in quiz.questions -%}
 {%- if item.type == "common_data" -%}
 {%- set index = loop.index -%}
-{{-'<div class="no-break">\n' if format=='html' else ''}}
-## Question {{index}} [Common Data]{%if item.marks %} ({{item.marks}} marks){%endif%}
-
-### Common data for {{index}}.1 to {{index}}.{{item.questions |length}}
-
-{{'\n<div class="fit-width">\n\n' if format=='html' else ''-}}
-{{ item.text }}
-{{-"\n\n</div>\n" if format=='html' else ''}}
-{%for question in item.questions -%}
-{{-'\n<div class="no-break">\n' if format=='html' else ''-}}
-{{ render_question(question, index~"."~loop.index, level=3) }}
-{{-"\n</div>" if format=='html' else ''-}}
-{%- endfor -%}
+{{ render_common_data_question(item, loop.index, for_html_export=for_html_export)}}
 {%- else -%}
-{{-'\n<div class="no-break">\n' if format=='html' else ''-}}
-{{ render_question(item, loop.index, level=2) }}
-{{-"\n</div>\n" if format=='html' else ''-}}
+{{-'\n<div class="no-break">\n' if for_html_export else ''-}}
+{{ render_question(item, loop.index, level=2, for_html_export=for_html_export) }}
+{{-"\n</div>\n" if for_html_export else ''-}}
 {%- endif -%}
 {%- endfor -%}
 {% endmacro -%}

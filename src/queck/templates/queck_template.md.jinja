@@ -1,8 +1,0 @@
-{%from 'queck_macros.md.jinja' import render_quiz-%}
-{% if format=='md' and format_md -%}
-{%filter mdformat-%}
-{{render_quiz(quiz,overview,'md')}}
-{%endfilter-%}
-{% else -%}
-{{render_quiz(quiz,overview,format)}}
-{%- endif%}
