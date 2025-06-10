@@ -71,15 +71,18 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
         return remove_defaults(schema)
 
 
-def _md_render_serializer(value, info):
-    if info.context and info.context.get("rendered", False):
-        renderer: MarkdownIt = info.context.get("renderer", mdit_renderers["fast"])
-        env = info.context.get("render_env")
-        return renderer.render(value, env)
+def _md_str_serializer(value, info):
+    if info.context:
+        if info.context.get("rendered", False):
+            renderer: MarkdownIt = info.context.get("renderer", mdit_renderers["base"])
+            env = info.context.get("render_env")
+            return renderer.render(value, env)
+        elif info.context.get("format_md", False):
+            return md_format(value)
     return value
 
 
-def _md_format_validator(x, info: ValidationInfo):
+def _md_str_validator(x, info: ValidationInfo):
     if info.context and info.context.get("format_md", False):
         return md_format(x)
     return x
@@ -87,8 +90,8 @@ def _md_format_validator(x, info: ValidationInfo):
 
 MDStr = Annotated[
     str,
-    AfterValidator(_md_format_validator),
-    PlainSerializer(_md_render_serializer),
+    AfterValidator(_md_str_validator),
+    PlainSerializer(_md_str_serializer),
 ]
 
 MDStrAdapter = TypeAdapter(MDStr)
