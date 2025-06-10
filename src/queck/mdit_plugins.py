@@ -48,13 +48,13 @@ def pygments_plugin(
     md.add_render_rule("fence", render_code_block, fmt="html")
 
 
-def css_inline_plugin(md, css="", extra_css=None):
+def css_inline_plugin(md, container="main", css="", extra_css=None):
     render = md.render
     if extra_css is None:
         extra_css = css
 
-    def inline_css(x):
-        out = f"<main>{render(x)}</main>"
+    def inline_css(x, env=None):
+        out = f"<{container}>{render(x)}</{container}>"
         return css_inline.inline_fragment(out, css=css, extra_css=extra_css)
 
     md.render = inline_css
