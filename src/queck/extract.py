@@ -88,10 +88,12 @@ def prompt_queck(prompt: str, model_name: None):
     return quiz2queck(quiz_extraction_chain.invoke({"text": prompt}))
 
 
-def extract_queck(file_name, model_name=None, force_single_select=True):
+def extract_queck(
+    file_name, model_name=None, additional_instructions=None, force_single_select=True
+):
     model = get_model(model_name)
     quiz_extraction_chain = (
-        quiz_extraction_prompt
+        quiz_extraction_prompt.partial(additional_instructions=additional_instructions)
         | model
         | get_validator(force_single_select=force_single_select)
     )
