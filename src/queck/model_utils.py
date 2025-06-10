@@ -1,8 +1,9 @@
 import io
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, ClassVar
 
 import yaml
+from jinja2 import Template
 from markdown_it import MarkdownIt
 from pydantic import (
     AfterValidator,
@@ -122,9 +123,20 @@ DecimalNumber = Annotated[
 DecimalNumberAdapter = TypeAdapter(DecimalNumber)
 
 
-# TODO: Add to md and html seamlessly with this model
-class YamlJsonIOModel(BaseModel):
+class DataViewModel(BaseModel):
     _yaml_content: Any | None = None  # Only used for round trip parsing.
+    view_template: ClassVar[Template]
+    mdit_renderer: ClassVar[MarkdownIt] = mdit_renderers["base"]
+
+    @classmethod
+    def use_mdit(cls, mdit: MarkdownIt):
+        """Sets the shared MarkdownIt renderer."""
+        cls.mdit_renderer = mdit
+
+    @classmethod
+    def reset_mdit(cls):
+        """Resets the shared MarkdownIt renderer to the base renderer."""
+        cls.mdit_renderer = mdit_renderers["base"]
 
     @classmethod
     def from_yaml(cls, yaml_str: str, format_md: bool = False, round_trip=False):
@@ -149,28 +161,103 @@ class YamlJsonIOModel(BaseModel):
         else:
             return content
 
-    def to_yaml(self, file_name: str = None, extension="yaml"):
+    def to_dict(
+        self,
+        *,
+        parsed: bool = False,
+        rendered: bool = False,
+        format_md: bool = False,
+        renderer: MarkdownIt | None = None,
+    ):
+        return self.model_dump(
+            exclude_defaults=True,
+            context={
+                "parsed": parsed,
+                "rendered": rendered,
+                "renderer": renderer or self.mdit_renderer,
+                "format_md": format_md,
+            },
+        )
+
+    def to_yaml(
+        self,
+        file_name: str = None,
+        extension="yaml",
+        *,
+        parsed: bool = False,
+        rendered: bool = False,
+        format_md: bool = False,
+        renderer: MarkdownIt | None = None,
+    ):
         result = io.StringIO()
         if self._yaml_content is None:
             ru_yaml.dump(self.model_dump(exclude_defaults=True), result)
         else:
             Merger(extend_lists=True, extend_dicts=True).merge(
-                self._yaml_content, self.model_dump(exclude_defaults=True)
+                self._yaml_content,
+                self.to_dict(
+                    parsed=parsed,
+                    rendered=rendered,
+                    format_md=format_md,
+                    renderer=renderer,
+                ),
             )
             ru_yaml.dump(self._yaml_content, result)
-        return self.to_file_or_str(result.getvalue(), file_name=file_name, extension=extension)
+        return self.to_file_or_str(
+            result.getvalue(), file_name=file_name, extension=extension
+        )
 
     def to_json(
         self,
         file_name: str = None,
+        extension="json",
+        *,
         parsed: bool = False,
         rendered: bool = False,
-        extension="json",
+        format_md: bool = False,
+        renderer: MarkdownIt | None = None,
     ):
         return self.to_file_or_str(
             self.model_dump_json(
-                indent=2, context={"parsed": parsed, "rendered": rendered}
+                exclude_defaults=True,
+                indent=2,
+                context={
+                    "parsed": parsed,
+                    "rendered": rendered,
+                    "renderer": renderer or self.mdit_renderer,
+                    "format_md": format_md,
+                },
             ),
+            file_name=file_name,
+            extension=extension,
+        )
+
+    def to_md(
+        self, file_name: str = None, extension="md", *, format: bool = False, **kwargs
+    ):
+        result = self.view_template.render(data=self, **kwargs)
+        if format:
+            result = md_format(result)
+        return self.to_file_or_str(
+            result,
+            file_name=file_name,
+            extension=extension,
+        )
+
+    def _repr_markdown_(self):
+        return self.to_md()
+
+    def to_html(
+        self,
+        file_name: str = None,
+        extension="html",
+        *,
+        renderer: MarkdownIt | None = None,
+        **kwargs,
+    ):
+        renderer = renderer or self.mdit_renderer
+        return self.to_file_or_str(
+            renderer.render(self.to_md(format=False, **kwargs)),
             file_name=file_name,
             extension=extension,
         )
