@@ -87,7 +87,9 @@ class Answer(BaseModel):
 
 
 class Question(BaseModel):
-    text: MDStr
+    """A Question Model."""
+
+    text: MDStr = Field(description="The statement of the question.")
     answer: Answer
     feedback: str | None = ""
     marks: DecimalNumber | None = 0
@@ -107,15 +109,21 @@ class QuestionGroup:
 
 
 class CommonDataQuestion(QuestionGroup, BaseModel):
+    """A set of questions based on a common data."""
+
     type: Literal["common_data"] = "common_data"
-    text: MDStr
-    questions: list[Question]
+    text: MDStr = Field(description="The common data associated with the questions.")
+    questions: list[Question] = Field(description="Questions based on the common data.")
 
 
 class Description(BaseModel):
+    """Informational entity which is not a question."""
+
     text: MDStr
 
 
 class Quiz(QuestionGroup, BaseModel):
+    """A Set of questions with a title."""
+
     title: str
     questions: list[Question | CommonDataQuestion | Description]
