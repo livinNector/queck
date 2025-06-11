@@ -1,10 +1,8 @@
-import abc
 import re
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
 from pydantic import (
-    BaseModel,
     Field,
     RootModel,
     SerializationInfo,
@@ -15,7 +13,13 @@ from pydantic import (
     model_validator,
 )
 
-from .model_utils import DecimalNumber, MDStr
+from .model_utils import (
+    DecimalNumber,
+    MDStr,
+    ParsedModelBase,
+    PatternField,
+    PatternStringBase,
+)
 
 AnswerType = Literal[
     "single_select_choices",
@@ -59,77 +63,6 @@ class AnswerModel[T](RootModel[T]):
             return self.root
 
 
-def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
-    return Field(
-        default="",
-        pattern=pattern.replace(
-            "?P",
-            "?",
-        ).replace("/", "\\/"),
-        **kwargs,
-    )
-
-
-class ParsedModelBase(BaseModel):
-    format: ClassVar[str]
-
-    @property
-    def formatted(self) -> str:
-        value = self.model_dump()
-        if isinstance(value, dict):
-            return self.format.format(**value)
-        return value
-
-    @model_serializer(mode="wrap")
-    def ser_formatted(
-        self,
-        handler: SerializerFunctionWrapHandler,
-        info: SerializationInfo,
-    ) -> str | dict[str, Any]:
-        context = info.context
-        if context is not None and context.get("formatted", False):
-            return self.format.format(**handler(self, info))
-        return handler(self, info)
-
-
-class PatternStringBase(abc.ABC, RootModel):
-    """Base class for regex parseable strings with named capture groups."""
-
-    pattern: ClassVar[str]
-    parsed_type: ClassVar  # used when serialzed in parsed mode.
-    parsed_extra: ClassVar[list] = []  # additional attributes passed to parsed type
-    _parsed: ParsedModelBase  # used when serialzed in parsed mode.
-
-    @property
-    def parsed(self) -> ParsedModelBase:
-        return self._parsed
-
-    @model_validator(mode="after")
-    def cache_parsed(self, info: ValidationInfo):
-        self._parsed = self.parsed_type.model_validate(
-            re.match(self.pattern, self.root).groupdict()
-            | {attr: getattr(self, attr) for attr in self.parsed_extra},
-            context=info.context,
-        )
-        self.root = self.parsed.formatted
-        return self
-
-    @model_serializer(mode="plain")
-    def ser_parsed(self, info: SerializationInfo) -> str | dict:
-        context = info.context
-        parsed = context and context.get("parsed", False)
-        return self.parsed.model_dump(
-            context={"formatted": not parsed, **(context or {})}
-        )
-
-    @staticmethod
-    def parsed_property(name):
-        return property(
-            lambda self: getattr(self.parsed, name),
-            lambda self, v: setattr(self.parsed, name, v),
-        )
-
-
 def escape_choice(text):
     return re.sub(r"/#", r"/&#35;", text)
 
@@ -161,6 +94,8 @@ ChoiceType = Literal["single_select", "multiple_select"]
 
 
 class Choice(ParsedModelBase):
+    """Choice with markdown text and optional feedback."""
+
     text: MDStr
     is_correct: bool
     feedback: MDStr | None = None

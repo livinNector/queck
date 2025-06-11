@@ -1,4 +1,6 @@
+import abc
 import io
+import re
 from decimal import Decimal
 from typing import Annotated, Any, ClassVar
 
@@ -8,10 +10,16 @@ from markdown_it import MarkdownIt
 from pydantic import (
     AfterValidator,
     BaseModel,
+    Field,
     Json,
     PlainSerializer,
+    RootModel,
+    SerializationInfo,
+    SerializerFunctionWrapHandler,
     TypeAdapter,
     ValidationInfo,
+    model_serializer,
+    model_validator,
 )
 from pydantic.json_schema import GenerateJsonSchema
 from ruamel.yaml import YAML
@@ -121,6 +129,77 @@ DecimalNumber = Annotated[
 ]
 
 DecimalNumberAdapter = TypeAdapter(DecimalNumber)
+
+
+def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
+    return Field(
+        default="",
+        pattern=pattern.replace(
+            "?P",
+            "?",
+        ).replace("/", "\\/"),
+        **kwargs,
+    )
+
+
+class ParsedModelBase(BaseModel):
+    format: ClassVar[str]
+
+    @property
+    def formatted(self) -> str:
+        value = self.model_dump()
+        if isinstance(value, dict):
+            return self.format.format(**value)
+        return value
+
+    @model_serializer(mode="wrap")
+    def ser_formatted(
+        self,
+        handler: SerializerFunctionWrapHandler,
+        info: SerializationInfo,
+    ) -> str | dict[str, Any]:
+        context = info.context
+        if context is not None and context.get("formatted", False):
+            return self.format.format(**handler(self, info))
+        return handler(self, info)
+
+
+class PatternStringBase(abc.ABC, RootModel):
+    """Base class for regex parseable strings with named capture groups."""
+
+    pattern: ClassVar[str]
+    parsed_type: ClassVar  # used when serialzed in parsed mode.
+    parsed_extra: ClassVar[list] = []  # additional attributes passed to parsed type
+    _parsed: ParsedModelBase  # used when serialzed in parsed mode.
+
+    @property
+    def parsed(self) -> ParsedModelBase:
+        return self._parsed
+
+    @model_validator(mode="after")
+    def cache_parsed(self, info: ValidationInfo):
+        self._parsed = self.parsed_type.model_validate(
+            re.match(self.pattern, self.root).groupdict()
+            | {attr: getattr(self, attr) for attr in self.parsed_extra},
+            context=info.context,
+        )
+        self.root = self.parsed.formatted
+        return self
+
+    @model_serializer(mode="plain")
+    def ser_parsed(self, info: SerializationInfo) -> str | dict:
+        parsed_kwargs = dict(info.__dict__)  # Slightly hacky
+        parsed_kwargs["context"] = context = info.context or {}
+        parsed = context.get("parsed", False)
+        parsed_kwargs["context"] |= {"formatted": not parsed}
+        return self.parsed.model_dump(**parsed_kwargs)
+
+    @staticmethod
+    def parsed_property(name):
+        return property(
+            lambda self: getattr(self.parsed, name),
+            lambda self, v: setattr(self.parsed, name, v),
+        )
 
 
 class DataViewModel(BaseModel):
