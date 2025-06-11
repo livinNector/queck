@@ -49,6 +49,19 @@ def _str_presenter(dumper, data):
 ru_yaml.representer.add_representer(str, _str_presenter)
 
 
+def to_file_or_str(content, file_name: str = None, extension: str = None):
+    if file_name:
+        write_file(file_name, content, extension=extension)
+    else:
+        return content
+
+
+def yaml_dump(content, file_name=None, extension="yaml"):
+    stream = io.StringIO()
+    ru_yaml.dump(content, stream=stream)
+    return to_file_or_str(stream.getvalue(), file_name=file_name, extension=extension)
+
+
 JsonAdapter = TypeAdapter(Json)
 
 
@@ -233,12 +246,7 @@ class DataViewModel(BaseModel):
         with open(yaml_file, "r") as f:
             return cls.from_yaml(f.read(), format_md=format_md, round_trip=round_trip)
 
-    @staticmethod
-    def to_file_or_str(content, file_name: str = None, extension: str = None):
-        if file_name:
-            write_file(file_name, content, extension=extension)
-        else:
-            return content
+    to_file_or_str = staticmethod(to_file_or_str)
 
     def to_dict(
         self,
@@ -247,14 +255,17 @@ class DataViewModel(BaseModel):
         rendered: bool = False,
         format_md: bool = False,
         renderer: MarkdownIt | None = None,
+        render_env: dict | None = None,
+        **kwargs,
     ):
         return self.model_dump(
-            exclude_defaults=True,
+            **kwargs,
             context={
                 "parsed": parsed,
                 "rendered": rendered,
                 "renderer": renderer or self.mdit_renderer,
                 "format_md": format_md,
+                "render_env": render_env,
             },
         )
 
@@ -267,24 +278,24 @@ class DataViewModel(BaseModel):
         rendered: bool = False,
         format_md: bool = False,
         renderer: MarkdownIt | None = None,
+        render_env: dict | None = None,
+        **kwargs,
     ):
-        result = io.StringIO()
-        if self._yaml_content is None:
-            ru_yaml.dump(self.model_dump(exclude_defaults=True), result)
-        else:
-            Merger(extend_lists=True, extend_dicts=True).merge(
-                self._yaml_content,
-                self.to_dict(
-                    parsed=parsed,
-                    rendered=rendered,
-                    format_md=format_md,
-                    renderer=renderer,
-                ),
-            )
-            ru_yaml.dump(self._yaml_content, result)
-        return self.to_file_or_str(
-            result.getvalue(), file_name=file_name, extension=extension
+        result = self.to_dict(
+            parsed=parsed,
+            rendered=rendered,
+            format_md=format_md,
+            renderer=renderer,
+            render_env=render_env,
+            **kwargs,
         )
+        # merging is not possible during a parsed dump.
+        if self._yaml_content is not None and not parsed:
+            Merger(extend_lists=True, extend_dicts=True).merge(
+                self._yaml_content, result
+            )
+            result = self._yaml_content
+        return yaml_dump(result, file_name=file_name, extension=extension)
 
     def to_json(
         self,
@@ -295,17 +306,20 @@ class DataViewModel(BaseModel):
         rendered: bool = False,
         format_md: bool = False,
         renderer: MarkdownIt | None = None,
+        render_env: dict | None = None,
+        **kwargs,
     ):
         return self.to_file_or_str(
             self.model_dump_json(
-                exclude_defaults=True,
                 indent=2,
                 context={
                     "parsed": parsed,
                     "rendered": rendered,
                     "renderer": renderer or self.mdit_renderer,
                     "format_md": format_md,
+                    "render_env": render_env,
                 },
+                **kwargs,
             ),
             file_name=file_name,
             extension=extension,
@@ -332,11 +346,12 @@ class DataViewModel(BaseModel):
         extension="html",
         *,
         renderer: MarkdownIt | None = None,
+        render_env: dict | None = None,
         **kwargs,
     ):
         renderer = renderer or self.mdit_renderer
         return self.to_file_or_str(
-            renderer.render(self.to_md(format=False, **kwargs)),
+            renderer.render(self.to_md(format=False, **kwargs), env=render_env),
             file_name=file_name,
             extension=extension,
         )
