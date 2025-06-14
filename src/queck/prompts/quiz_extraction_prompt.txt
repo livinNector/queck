@@ -1,13 +1,23 @@
 Extract the below quiz in the required output json format.
 Do not modify, add or remove any content or info or correct any mistakes from the actual content.
+Only correct the formatting.
 
 Ensure that all the choices are marked correct or wrong according to the question.
 Ensure that only one correct option in single select choices.
 Extract the contents of the choices as markdown. Use code blocks and dollar math blocks in choices as needed.
 Common Data Questions won't have answer instead it has a list of question nested inside it.
 
+Extract all the questions from the input to the output.
+
+Check for Common Data Questions and extract them accordingly.
+
+Convert any other text based formats like latex or html to markdown.
+Correct text formatting issues while converting to markdown.
+
+Only return the result json without any other content.
+
 Additional Instructions:
-{additional_instructions}
+{prompt_extra}
 
 Content:
 {text}

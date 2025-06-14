@@ -1,28 +1,56 @@
+import json
+import re
+from functools import wraps
 from importlib.resources import files
 
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableLambda
-from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
 
 from . import prompts
+from .model_utils import yaml_dump
 from .queck_models import Queck
 from .quiz_models import Quiz
 
-quiz_generation_prompt = ChatPromptTemplate(
-    [
-        ("system", files(prompts).joinpath("quiz_structure.txt").read_text()),
-        ("human", "{prompt}"),
-    ]
-)
+GENAI_ENABLED = True
+try:
+    from langchain.chat_models import init_chat_model
+    from langchain_core.output_parsers import StrOutputParser
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.runnables import RunnableLambda
+except ImportError:
+    GENAI_ENABLED = False
 
-quiz_extraction_prompt = ChatPromptTemplate(
-    [
-        ("system", files(prompts).joinpath("quiz_structure.txt").read_text()),
-        ("human", files(prompts).joinpath("quiz_extraction_prompt.txt").read_text()),
-    ]
-)
+if GENAI_ENABLED:
+    quiz_generation_prompt = ChatPromptTemplate(
+        [
+            ("system", files(prompts).joinpath("quiz_structure.txt").read_text()),
+            ("human", "{prompt}"),
+        ]
+    )
+
+    quiz_extraction_prompt = ChatPromptTemplate(
+        [
+            ("system", files(prompts).joinpath("quiz_structure.txt").read_text()),
+            (
+                "human",
+                files(prompts).joinpath("quiz_extraction_prompt.txt").read_text(),
+            ),
+        ]
+    )
+
+
+def genai_feature_check_wrapper(func):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        if GENAI_ENABLED:
+            return func(*args, **kwargs)
+        else:
+            print(
+                "This feature requires genai extras for this package. "
+                "Please install the package as "
+                "queck[genai] or queck[all] to avail this feature."
+            )
+
+    return inner
 
 
 def remove_defaults(schema: dict) -> dict:
@@ -40,20 +68,7 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
         return cleaned_schema
 
 
-def get_model(model_name):
-    model_name = model_name or "openai:gpt-4o-mini"
-    provider, model_name = model_name.split(":")
-    if provider == "openai":
-        return ChatOpenAI(model=model_name or "gpt-4o-mini").with_structured_output(
-            Quiz.model_json_schema(schema_generator=NoDefaultJsonSchema),
-            method="json_schema",
-        )
-    elif provider == "groq":
-        return ChatGroq(
-            model=model_name or "llama-3.1-8b-instant"
-        ).with_structured_output(Quiz.model_json_schema(), method="json_mode")
-
-
+@genai_feature_check_wrapper
 def get_validator(force_single_select=False):
     return RunnableLambda(
         lambda x: Quiz.model_validate(
@@ -65,6 +80,37 @@ def get_validator(force_single_select=False):
             },
         )
     )
+
+
+def json_extract(x):
+    """Utility to remove code blocks from LLM output if exists."""
+    x = re.match(
+        r"(```[^\n]*\n)?(?P<content>\{.*\})(\n```)?", x.strip(), re.DOTALL
+    ).groupdict()["content"]
+    return json.loads(x)
+
+
+@genai_feature_check_wrapper
+def get_model(model_name):
+    model_provider, model_name = model_name.split(":")
+    if model_provider == "openai":
+        return init_chat_model(
+            model=model_name, model_provider=model_provider
+        ).with_structured_output(Quiz.model_json_schema(), method="json_schema")
+    elif model_provider == "groq":
+        return init_chat_model(
+            model=model_name,
+            model_provider=model_provider,
+        ).with_structured_output(Quiz.model_json_schema(), method="json_mode")
+    elif model_provider == "google_genai":
+        return (
+            init_chat_model(
+                model=model_name,
+                model_provider=model_provider,
+            )
+            | StrOutputParser()
+            | RunnableLambda(json_extract)
+        )
 
 
 def quiz2queck(quiz: Quiz):
@@ -81,6 +127,7 @@ def quiz2queck(quiz: Quiz):
         raise e
 
 
+@genai_feature_check_wrapper
 def prompt_queck(prompt: str, model_name: None):
     model = get_model(model_name)
 
@@ -88,16 +135,43 @@ def prompt_queck(prompt: str, model_name: None):
     return quiz2queck(quiz_extraction_chain.invoke({"text": prompt}))
 
 
+@genai_feature_check_wrapper
 def extract_queck(
-    file_name, model_name=None, additional_instructions=None, force_single_select=True
+    file_name: str,
+    model: str | None = None,
+    prompt_extra: str | None = None,
+    force_single_select: bool = True,
+    output_file: str | None = None,
 ):
-    model = get_model(model_name)
-    quiz_extraction_chain = (
-        quiz_extraction_prompt.partial(additional_instructions=additional_instructions)
-        | model
-        | get_validator(force_single_select=force_single_select)
-    )
-    with open(file_name) as f:
-        content = f.read()
-    quiz = quiz_extraction_chain.invoke({"text": content})
-    return quiz2queck(quiz=quiz)
+    """Extracts the questions as queck from the given file.
+
+    Args:
+        file_name (str): The source file to extract.
+        model (str):
+            The model of format "provider:model".
+            Supported providers are "openai", "groq" and "google_genai".
+        prompt_extra (str): Any additional instructions for extraction.
+        force_single_select (bool):
+            Whether to force question to single select if there
+            is only one correct option.
+        output_file (str): File name for the output.
+    """
+    try:
+        model = get_model(model)
+        quiz_extraction_chain = (
+            quiz_extraction_prompt.partial(prompt_extra=prompt_extra)
+            | model
+            | get_validator(force_single_select=force_single_select)
+        )
+        with open(file_name) as f:
+            content = f.read()
+        queck = quiz2queck(quiz=quiz_extraction_chain.invoke({"text": content}))
+        if output_file is None:
+            return queck
+        else:
+            queck.to_queck(output_file)
+
+    except Exception as e:
+        if hasattr(e, "quiz_dump"):
+            yaml_dump(e.quiz_dump, output_file, extension="qk")
+        raise e

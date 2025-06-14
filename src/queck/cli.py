@@ -133,7 +133,7 @@ class QueckCli:
             )
             self.export(
                 *files_changed,
-                output_folder=output_folder,
+                output_dir=output_dir,
                 format=format,
                 render_mode=render_mode,
             )
