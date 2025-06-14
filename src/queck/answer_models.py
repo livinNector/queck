@@ -28,7 +28,7 @@ AnswerType = Literal[
     "num_range",
     "num_tolerance",
     "short_answer",
-    "true_false",
+    "true_or_false",
     "none",
 ]
 
@@ -359,8 +359,11 @@ class ShortAnswer(AnswerModel[str]):
 class TrueOrFalse(AnswerModel[bool]):
     """True or false answer."""
 
-    type: ClassVar[AnswerType] = "true_false"
+    type: ClassVar[AnswerType] = "true_or_false"
     root: bool
+
+    def __bool__(self):
+        return self.root
 
     def to_single_select(self):
         return SingleSelectChoices.model_validate(
