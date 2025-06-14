@@ -1,20 +1,13 @@
 import asyncio
 import os
-from io import StringIO
 from typing import Literal
 
 import fire
 from watchfiles import awatch
 
+from .extract import extract_queck
 from .live_server import LiveServer
-from .queck_models import Queck, yaml
-from .utils import write_file
-
-GENAI_ENABLED = True
-try:
-    from .extract import extract_queck
-except ImportError:
-    GENAI_ENABLED = False
+from .queck_models import Queck
 
 
 class QueckCli:
@@ -26,43 +19,34 @@ class QueckCli:
     def format(self, *queck_files):
         """Formats the queck file."""
         for queck_file in queck_files:
-            Queck.read_queck(queck_file).to_queck(queck_file)
-
-    def extract(self, file_name, model=None):
-        """Extracts the questions as queck from the given file."""
-        if GENAI_ENABLED:
-            try:
-                extract_queck(file_name, model).to_queck(file_name)
-            except Exception as e:
-                if hasattr(e, "quiz_dump"):
-                    stream = StringIO()
-                    yaml.dump(e.quiz_dump, stream=stream)
-                    write_file(file_name, stream.getvalue(), format="queck")
-                    print(stream.getvalue())
-                raise e
-
-        else:
-            print(
-                "optional genai features not enabled, "
-                "install the package queck[genai] to avail this feature."
+            Queck.read_queck(queck_file, format_md=True, round_trip=True).to_queck(
+                queck_file
             )
+
+    extract = extract_queck
 
     def export(
         self,
         *queck_files,
         format: Literal["html", "md", "json"] = "html",
-        output_folder="export",
-        render_mode: Literal["fast", "latex", "compat"] = "fast",
+        output_dir="export",
+        render_mode: Literal["fast", "latex", "inline"] = "fast",
+        overview=False,
+        render_json=False,
+        parsed=True,
         watch=False,
     ):
         """Export queck (YAML) files into the specified .
 
         Args:
-            queck_files : List of queck (YAML) files to be exported.
-            format : Output format
-            output_folder : Output folder path
-            render_mode : Rendering mode
-            watch : Enable watch mode to monitor changes in files
+            queck_files (list[str]): List of queck (YAML) files to be exported.
+            format (Literal['html','md','json']): Output format
+            output_dir (str) : Output dir path
+            render_mode (Literal['fast','latex','inline']) : Rendering mode
+            overview (bool): Whether to add overview section
+            render_json (bool): Whether to render markdown to html in json
+            parsed (bool): Whether to add parsed choices
+            watch (bool): Enable watch mode to monitor changes in files
 
         Returns:
             None
@@ -71,12 +55,15 @@ class QueckCli:
             # Run the file watcher asynchronously to monitor file changes
             self.export(
                 *queck_files,
-                output_folder=output_folder,
+                output_dir=output_dir,
                 format=format,
+                overview=overview,
                 render_mode=render_mode,
+                render_json=render_json,
+                parsed=parsed,
             )
             asyncio.run(
-                self._watch_and_export(queck_files, output_folder, format, render_mode)
+                self._watch_and_export(queck_files, output_dir, format, render_mode)
             )
         else:
             # Export files without watching for changes
@@ -86,7 +73,7 @@ class QueckCli:
                     current_dir = os.path.abspath(os.curdir)
                     yaml_file = os.path.abspath(yaml_file)
                     output_file = os.path.join(
-                        output_folder, os.path.relpath(yaml_file, current_dir)
+                        output_dir, os.path.relpath(yaml_file, current_dir)
                     )
                     output_file = os.path.splitext(output_file)[0] + f".{format}"
                     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -96,6 +83,9 @@ class QueckCli:
                             output_file=output_file,
                             format=format,
                             render_mode=render_mode,
+                            overview=overview,
+                            render_json=render_json,
+                            parsed=parsed,
                         )
                     except ValueError:
                         raise ValueError(
@@ -105,22 +95,11 @@ class QueckCli:
                 except Exception as e:
                     print(e)
 
-    async def _watch_and_export(self, queck_files, output_folder, format, render_mode):
-        """Watches for changes in the specified files and re-exports them upon changes.
-
-        Args:
-            queck_files: List of YAML files to be monitored and exported.
-            format: Output format (html or md).
-            output_folder: Output folder path
-            render_mode: Rendering mode - 'fast' or 'compat'.
-
-        Returns:
-            None
-        """
+    async def _watch_and_export(self, queck_files, output_dir, format, render_mode):
         print("Watching for changes...")
         print(queck_files)
         if format == "html":
-            self.live_server = LiveServer(output_folder)
+            self.live_server = LiveServer(output_dir)
             self.live_server.start()
 
         async for changes in awatch(*queck_files):
