@@ -40,7 +40,7 @@
 **Answer:** ${{ answer.value.low }}$ to ${{ answer.value.high }}$
 {%- elif answer.type == "num_tolerance" %}
 **Answer:** ${{ answer.value.value }}$ ± ${{ answer.value.tolerance }}$
-{%- elif answer.type == "short_answer" %}
+{%- elif answer.type in ["short_answer","true_or_false"] %}
 **Answer:** {{ answer.value }}
 {%- endif %}
 {%if question.feedback %}
