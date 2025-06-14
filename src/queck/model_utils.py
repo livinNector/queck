@@ -258,15 +258,52 @@ class DataViewModel(BaseModel):
         render_env: dict | None = None,
         **kwargs,
     ):
-        return self.model_dump(
-            **kwargs,
-            context={
-                "parsed": parsed,
-                "rendered": rendered,
-                "renderer": renderer or self.mdit_renderer,
-                "format_md": format_md,
-                "render_env": render_env,
-            },
+        # for adding additional context
+        kwarg_context = kwargs.pop("context", {})
+        (
+            self.model_dump(
+                context={
+                    "parsed": parsed,
+                    "rendered": rendered,
+                    "renderer": renderer or self.mdit_renderer,
+                    "format_md": format_md,
+                    "render_env": render_env,
+                }
+                | kwarg_context,
+                **kwargs,
+            ),
+        )
+
+    def to_json(
+        self,
+        file_name: str = None,
+        extension="json",
+        *,
+        parsed: bool = False,
+        rendered: bool = False,
+        format_md: bool = False,
+        renderer: MarkdownIt | None = None,
+        render_env: dict | None = None,
+        **kwargs,
+    ):
+        # for adding additional context
+        kwarg_context = kwargs.pop("context", {})
+        indent = kwargs.pop("indent", 2)
+        return self.to_file_or_str(
+            self.model_dump_json(
+                indent=indent,
+                context={
+                    "parsed": parsed,
+                    "rendered": rendered,
+                    "renderer": renderer or self.mdit_renderer,
+                    "format_md": format_md,
+                    "render_env": render_env,
+                }
+                | kwarg_context,
+                **kwargs,
+            ),
+            file_name=file_name,
+            extension=extension,
         )
 
     def to_yaml(
@@ -296,34 +333,6 @@ class DataViewModel(BaseModel):
             )
             result = self._yaml_content
         return yaml_dump(result, file_name=file_name, extension=extension)
-
-    def to_json(
-        self,
-        file_name: str = None,
-        extension="json",
-        *,
-        parsed: bool = False,
-        rendered: bool = False,
-        format_md: bool = False,
-        renderer: MarkdownIt | None = None,
-        render_env: dict | None = None,
-        **kwargs,
-    ):
-        return self.to_file_or_str(
-            self.model_dump_json(
-                indent=2,
-                context={
-                    "parsed": parsed,
-                    "rendered": rendered,
-                    "renderer": renderer or self.mdit_renderer,
-                    "format_md": format_md,
-                    "render_env": render_env,
-                },
-                **kwargs,
-            ),
-            file_name=file_name,
-            extension=extension,
-        )
 
     def to_md(
         self, file_name: str = None, extension="md", *, format: bool = False, **kwargs
