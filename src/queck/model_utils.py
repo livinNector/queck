@@ -260,18 +260,16 @@ class DataViewModel(BaseModel):
     ):
         # for adding additional context
         kwarg_context = kwargs.pop("context", {})
-        (
-            self.model_dump(
-                context={
-                    "parsed": parsed,
-                    "rendered": rendered,
-                    "renderer": renderer or self.mdit_renderer,
-                    "format_md": format_md,
-                    "render_env": render_env,
-                }
-                | kwarg_context,
-                **kwargs,
-            ),
+        return self.model_dump(
+            context={
+                "parsed": parsed,
+                "rendered": rendered,
+                "renderer": renderer or self.mdit_renderer,
+                "format_md": format_md,
+                "render_env": render_env,
+            }
+            | kwarg_context,
+            **kwargs,
         )
 
     def to_json(
