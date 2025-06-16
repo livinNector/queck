@@ -1,17 +1,17 @@
 {% macro render_overview(quiz)-%}
 {%macro overview_row(name, type)-%}
-{%-set questions = quiz.questions|selectattr('type', "equalto", type) | list -%}
+{%-set questions = quiz.questions|selectattr('type', "in", type) | list -%}
 | {{name}} | {{ questions | length }} | {{questions | map(attribute='marks') | sum}} |
 {%-endmacro -%}
 ## Overview
 
 | Question Type       | Count | Marks|
 |---------------------|-------|------|
-{{overview_row('Single Select','single_select')}}
-{{overview_row('Multiple Select','multiple_select')}}
-{{overview_row('Numerical','numerical_answer')}}
-{{overview_row('Short Answer','short_answer')}}
-{{overview_row('Common Data','common_data')}}
+{{overview_row('Single Select',['single_select_choices'])}}
+{{overview_row('Multiple Select',['multiple_select_choices'])}}
+{{overview_row('Numerical',['num_int','num_range','num_tolerance'])}}
+{{overview_row('Short Answer',['short_answer'])}}
+{{overview_row('Common Data',['common_data'])}}
 
 ---
 {%- endmacro %}
