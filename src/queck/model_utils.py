@@ -17,6 +17,7 @@ from pydantic import (
     Field,
     Json,
     PlainSerializer,
+    PrivateAttr,
     RootModel,
     SerializationInfo,
     SerializerFunctionWrapHandler,
@@ -224,7 +225,7 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
 
 
 class DataViewModel(BaseModel):
-    _yaml_content: Any | None = None  # Only used for round trip parsing.
+    _yaml_content: Any | None = PrivateAttr(None)  # Only used for round trip parsing.
     view_template: ClassVar[Template]
     mdit_renderer: ClassVar[MarkdownIt] = mdit_renderers["base"]
 
