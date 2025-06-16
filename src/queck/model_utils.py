@@ -2,7 +2,11 @@ import abc
 import io
 import re
 from decimal import Decimal
-from typing import Annotated, Any, ClassVar
+from typing import (
+    Annotated,
+    Any,
+    ClassVar,
+)
 
 import yaml
 from jinja2 import Template
@@ -17,6 +21,7 @@ from pydantic import (
     SerializationInfo,
     SerializerFunctionWrapHandler,
     TypeAdapter,
+    ValidationError,
     ValidationInfo,
     model_serializer,
     model_validator,
@@ -49,7 +54,7 @@ def _str_presenter(dumper, data):
 ru_yaml.representer.add_representer(str, _str_presenter)
 
 
-def to_file_or_str(content, file_name: str = None, extension: str = None):
+def to_file_or_str(content, file_name: str | None = None, extension: str | None = None):
     if file_name:
         write_file(file_name, content, extension=extension)
     else:
@@ -93,7 +98,7 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
         return remove_defaults(schema)
 
 
-def _md_str_serializer(value, info):
+def _md_str_serializer(value: str, info: SerializationInfo):
     if info.context:
         if info.context.get("rendered", False):
             renderer: MarkdownIt = info.context.get("renderer", mdit_renderers["base"])
@@ -120,11 +125,11 @@ MDStrAdapter = TypeAdapter(MDStr)
 
 
 def dec_to_num(d: Decimal):
-    d = str(d)
+    sd = str(d)
     try:
-        return int(d)
+        return int(sd)
     except ValueError:
-        return float(d)
+        return float(sd)
 
 
 def non_exponent_normalize(d: Decimal):
@@ -155,7 +160,7 @@ def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
     )
 
 
-class ParsedModelBase(BaseModel):
+class PatternParsedModel(BaseModel):
     format: ClassVar[str]
 
     @property
@@ -173,26 +178,29 @@ class ParsedModelBase(BaseModel):
     ) -> str | dict[str, Any]:
         context = info.context
         if context is not None and context.get("formatted", False):
-            return self.format.format(**handler(self, info))
-        return handler(self, info)
+            return self.format.format(**handler(self))
+        return handler(self)
 
 
-class PatternStringBase(abc.ABC, RootModel):
+class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
     """Base class for regex parseable strings with named capture groups."""
 
     pattern: ClassVar[str]
     parsed_type: ClassVar  # used when serialzed in parsed mode.
+    _parsed: T  # used when serialzed in parsed mode.
     parsed_extra: ClassVar[list] = []  # additional attributes passed to parsed type
-    _parsed: ParsedModelBase  # used when serialzed in parsed mode.
 
     @property
-    def parsed(self) -> ParsedModelBase:
+    def parsed(self) -> T:
         return self._parsed
 
     @model_validator(mode="after")
     def cache_parsed(self, info: ValidationInfo):
+        match = re.match(self.pattern, self.root)
+        if match is None:
+            raise ValidationError("Does not match the pattern.")
         self._parsed = self.parsed_type.model_validate(
-            re.match(self.pattern, self.root).groupdict()
+            match.groupdict()
             | {attr: getattr(self, attr) for attr in self.parsed_extra},
             context=info.context,
         )
@@ -274,7 +282,7 @@ class DataViewModel(BaseModel):
 
     def to_json(
         self,
-        file_name: str = None,
+        file_name: str | None = None,
         extension="json",
         *,
         parsed: bool = False,
@@ -306,7 +314,7 @@ class DataViewModel(BaseModel):
 
     def to_yaml(
         self,
-        file_name: str = None,
+        file_name: str | None = None,
         extension="yaml",
         *,
         parsed: bool = False,
@@ -333,7 +341,12 @@ class DataViewModel(BaseModel):
         return yaml_dump(result, file_name=file_name, extension=extension)
 
     def to_md(
-        self, file_name: str = None, extension="md", *, format: bool = False, **kwargs
+        self,
+        file_name: str | None = None,
+        extension="md",
+        *,
+        format: bool = False,
+        **kwargs,
     ):
         result = self.view_template.render(data=self, **kwargs)
         if format:
@@ -349,7 +362,7 @@ class DataViewModel(BaseModel):
 
     def to_html(
         self,
-        file_name: str = None,
+        file_name: str | None = None,
         extension="html",
         *,
         renderer: MarkdownIt | None = None,

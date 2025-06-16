@@ -10,7 +10,7 @@ def pygments_plugin(
     md,
     cssstyles: str | None = None,
     prestyles: str | None = None,
-    linenos: True = False,
+    linenos: bool = False,
     noclasses: bool = True,
     **kwargs,
 ):
@@ -69,6 +69,7 @@ def fence_default_lang_plugin(md: MarkdownIt, default_lang="text"):
 
     md.core.ruler.after("block", "fence_default_lang", update_codeblock_lang)
 
+
 # TODO: Generalize this to collect image tokens, then do any operations on it.
 def image_collector_plugin(
     md: MarkdownIt, rename_images: bool = False, prefix: str = ""
@@ -101,7 +102,7 @@ def image_collector_plugin(
         for image_token in (
             inline_token
             for token in state.tokens
-            if token.type == "inline"
+            if token.children and token.type == "inline"
             for inline_token in token.children
             if inline_token.type == "image"
         ):
@@ -114,6 +115,8 @@ def image_collector_plugin(
 
             state.env["n_images"] += 1
             image_url = image_token.attrs["src"]
+            if not isinstance(image_url, str):
+                continue
             ext = image_url.split(".")[-1]
             image_name = f"{prefix}{state.env['n_images']}.{ext}"
             if rename_images:

@@ -66,6 +66,8 @@ def get_mdit_render_env(
     globals: dict | None = None,
     filters: dict | None = None,
 ):
+    if mdit is None:
+        mdit = mdit_renderers["base"]
     env = Environment(
         loader=PackageLoader("queck", "templates"), autoescape=select_autoescape()
     )

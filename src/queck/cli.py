@@ -33,8 +33,9 @@ class QueckCli:
         render_mode: Literal["fast", "latex", "inline"] = "fast",
         overview=False,
         render_json=False,
-        parsed=True,
+        parsed=False,
         watch=False,
+        kwargs: dict|None={},
     ):
         """Export queck (YAML) files into the specified .
 
@@ -47,7 +48,7 @@ class QueckCli:
             render_json (bool): Whether to render markdown to html in json
             parsed (bool): Whether to add parsed choices
             watch (bool): Enable watch mode to monitor changes in files
-
+            kwargs (dict|None) : Other configs passed to Queck export
         Returns:
             None
         """
@@ -86,6 +87,7 @@ class QueckCli:
                             overview=overview,
                             render_json=render_json,
                             parsed=parsed,
+                            **kwargs,
                         )
                     except ValueError:
                         raise ValueError(

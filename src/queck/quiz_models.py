@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import (
@@ -10,6 +11,8 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
+
+from queck.queck_models import MarkedQuestionContainer
 
 from .answer_models import (
     AnswerType,
@@ -40,13 +43,12 @@ class Choices(RootModel):
         return len(list(filter(lambda x: x.is_correct, self.root)))
 
     @model_validator(mode="after")
-    @classmethod
-    def alteast_one_correct(cls, value, info: ValidationInfo):
+    def alteast_one_correct(self, info: ValidationInfo):
         if info.context and info.context.get("ignore_n_correct"):
-            return value
-        assert value.n_correct > 0, "Atleast one choice must be correct"
-        assert value.n_correct < len(value.root), "All choices should not be correct"
-        return value
+            return self
+        assert self.n_correct > 0, "Atleast one choice must be correct"
+        assert self.n_correct < len(self.root), "All choices should not be correct"
+        return self
 
 
 class Answer(BaseModel):
@@ -92,23 +94,11 @@ class Question(BaseModel):
     text: MDStr = Field(description="The statement of the question.")
     answer: Answer
     feedback: str | None = ""
-    marks: DecimalNumber | None = 0
+    marks: DecimalNumber | None = Decimal()
     tags: list[str] | None = Field(default_factory=list)
 
 
-class QuestionGroup:
-    """Base class for question containers."""
-
-    questions: list[Question]
-
-    @property
-    def marks(self) -> int | None:
-        return sum(
-            question.marks for question in self.questions if hasattr(question, "marks")
-        )
-
-
-class CommonDataQuestion(QuestionGroup, BaseModel):
+class CommonDataQuestion(BaseModel, MarkedQuestionContainer):
     """A set of questions based on a common data."""
 
     type: Literal["common_data"] = "common_data"
@@ -122,7 +112,7 @@ class Description(BaseModel):
     text: MDStr
 
 
-class Quiz(QuestionGroup, BaseModel):
+class Quiz(BaseModel, MarkedQuestionContainer):
     """A Set of questions with a title."""
 
     title: str

@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import (
     Field,
@@ -16,49 +16,48 @@ from pydantic import (
 from .model_utils import (
     DecimalNumber,
     MDStr,
-    ParsedModelBase,
     PatternField,
-    PatternStringBase,
+    PatternParsedModel,
+    PatternString,
 )
 
-AnswerType = Literal[
-    "single_select_choices",
-    "multiple_select_choices",
-    "num_int",
-    "num_range",
-    "num_tolerance",
-    "short_answer",
-    "true_or_false",
-    "none",
-]
+
+class AnswerTypes:
+    single_select_choices = Literal["single_select_choices"]
+    multiple_select_choices = Literal["multiple_select_choices"]
+    short_answer = Literal["short_answer"]
+    num_int = Literal["num_int"]
+    num_range = Literal["num_range"]
+    num_tolerance = Literal["num_tolerance"]
+    true_or_false = Literal["true_or_false"]
 
 
 @dataclass
-class Answer[T]:
+class AnswerData[T]:
     value: T
-    type: AnswerType
+    type: str
 
 
-class AnswerModel[T](RootModel[T]):
-    """Same as RootModel but adds and alias value to root attribute of root model."""
+class AnswerModel[RootT](RootModel[RootT]):
+    """Wrapper for Root Model with value as alias for root and parsed serialization."""
 
-    root: T
-    type: ClassVar[str]
+    root: RootT
+    type: ClassVar
 
     @property
-    def value(self) -> T:
+    def value(self) -> RootT:
         """Alias for root."""
         return self.root
 
     @value.setter
-    def value(self, value: T):
+    def value(self, value: RootT):
         self.root = value
 
     @model_serializer(mode="plain")
-    def ser_parsed(self, info: SerializationInfo) -> T | Answer[T]:
+    def ser_parsed(self, info: SerializationInfo) -> RootT | AnswerData[RootT]:
         context = info.context
         if context is not None and context.get("parsed", False):
-            return Answer(value=self.value, type=self.type)
+            return AnswerData(value=self.value, type=self.type)
         else:
             return self.root
 
@@ -93,7 +92,7 @@ def choice_pattern(mark):
 ChoiceType = Literal["single_select", "multiple_select"]
 
 
-class Choice(ParsedModelBase):
+class Choice(PatternParsedModel):
     """Choice with markdown text and optional feedback."""
 
     text: MDStr
@@ -128,20 +127,19 @@ class Choice(ParsedModelBase):
     ) -> str | dict[str, Any]:
         context = info.context
         if context is not None and context.get("formatted", False):
-            result = handler(self, info)
+            result = handler(self)
             return format_choice(self.mark, result["text"], result.get("feedback"))
-        return handler(self, info)
+        return handler(self)
 
 
-class ChoiceBase(PatternStringBase):
-    type: ClassVar[ChoiceType | None] = None
+class ChoiceBase(PatternString[Choice]):
     is_correct: ClassVar[bool]
-    type: ClassVar[ChoiceType | None]
-    parsed_type: ClassVar = Choice
+    type: ClassVar[ChoiceType | None] = None
     parsed_extra = ["is_correct", "type"]
+    parsed_type: ClassVar = Choice
 
-    text = PatternStringBase.parsed_property("text")
-    feedback = PatternStringBase.parsed_property("feedback")
+    text = PatternString.parsed_property("text")
+    feedback = PatternString.parsed_property("feedback")
 
 
 class SingleSelectCorrectChoice(ChoiceBase):
@@ -176,7 +174,7 @@ class SingleSelectCorrectChoice(ChoiceBase):
     is_correct: ClassVar[bool] = True
     type: ClassVar[ChoiceType | None] = "single_select"
     pattern: ClassVar[str] = choice_pattern(mark)
-    root: str = PatternField(pattern=pattern)
+    root: Annotated[str, PatternField(pattern=pattern)]
 
 
 class MultipleSelectCorrectChoice(ChoiceBase):
@@ -211,7 +209,7 @@ class MultipleSelectCorrectChoice(ChoiceBase):
     is_correct: ClassVar[bool] = True
     type: ClassVar[ChoiceType | None] = "multiple_select"
     pattern: ClassVar[str] = choice_pattern(mark)
-    root: str = PatternField(pattern=pattern)
+    root: Annotated[str, PatternField(pattern=pattern)]
 
 
 class IncorrectChoice(ChoiceBase):
@@ -243,18 +241,14 @@ class IncorrectChoice(ChoiceBase):
     mark: ClassVar[str] = " "
     is_correct: ClassVar[bool] = False
     pattern: ClassVar[str] = choice_pattern(mark)
-    root: str = PatternField(pattern=pattern)
+    root: Annotated[str, PatternField(pattern=pattern)]
 
 
 correct_choice_adapter = TypeAdapter(MultipleSelectCorrectChoice)
 incorrect_choice_adapter = TypeAdapter(IncorrectChoice)
 
 
-class ChoicesBase(AnswerModel):
-    root: list[
-        MultipleSelectCorrectChoice | SingleSelectCorrectChoice | IncorrectChoice
-    ]
-
+class ChoicesBase[ItemT](AnswerModel[list[ItemT]]):
     def __getitem__(self, item):
         return self.root[item]
 
@@ -277,12 +271,10 @@ class ChoicesBase(AnswerModel):
 
 
 # manually defining json schema as contians is not included in pydantic yet.
-class SingleSelectChoices(
-    ChoicesBase[list[SingleSelectCorrectChoice | IncorrectChoice]]
-):
+class SingleSelectChoices(ChoicesBase):
     """List of choices with only one choice selectable and correct."""
 
-    type: ClassVar[AnswerType] = "single_select_choices"
+    type: ClassVar[AnswerTypes.single_select_choices] = "single_select_choices"
     root: list[SingleSelectCorrectChoice | IncorrectChoice] = Field(
         json_schema_extra={
             "allOf": [
@@ -315,12 +307,10 @@ class SingleSelectChoices(
         return self
 
 
-class MultipleSelectChoices(
-    ChoicesBase[list[MultipleSelectCorrectChoice | IncorrectChoice]]
-):
+class MultipleSelectChoices(ChoicesBase):
     """List of choices with one or more choices selectable and correct."""
 
-    type: ClassVar[AnswerType] = "multiple_select_choices"
+    type: ClassVar[AnswerTypes.multiple_select_choices] = "multiple_select_choices"
     root: list[MultipleSelectCorrectChoice | IncorrectChoice] = Field(
         json_schema_extra={
             "allOf": [
@@ -352,15 +342,13 @@ class MultipleSelectChoices(
 class ShortAnswer(AnswerModel[str]):
     """Text based answer."""
 
-    type: ClassVar[AnswerType] = "short_answer"
-    root: str
+    type: ClassVar[AnswerTypes.short_answer] = "short_answer"
 
 
 class TrueOrFalse(AnswerModel[bool]):
     """True or false answer."""
 
-    type: ClassVar[AnswerType] = "true_or_false"
-    root: bool
+    type: ClassVar[AnswerTypes.true_or_false] = "true_or_false"
 
     def __bool__(self):
         return self.root
@@ -377,11 +365,10 @@ class TrueOrFalse(AnswerModel[bool]):
 class Integer(AnswerModel[int]):
     """Numerical integer answer."""
 
-    type: ClassVar[AnswerType] = "num_int"
-    root: int
+    type: ClassVar[AnswerTypes.num_int] = "num_int"
 
 
-class NumRangeParsed(ParsedModelBase, title="NumRange"):
+class NumRangeParsed(PatternParsedModel, title="NumRange"):
     format: ClassVar[str] = "{low}..{high}"
     high: DecimalNumber
     low: DecimalNumber
@@ -392,7 +379,7 @@ class NumRangeParsed(ParsedModelBase, title="NumRange"):
         return self
 
 
-class NumRangeRoot(PatternStringBase):
+class NumRangeStr(PatternString[NumRangeParsed]):
     """Numerical range based answer.
 
     Format: `{low}..{high}`.
@@ -403,33 +390,31 @@ class NumRangeRoot(PatternStringBase):
     Both `low` and `high` can be integer or floating point types.
     """
 
-    format: ClassVar[str] = "{low}..{high}"
     pattern: ClassVar[str] = (
         r"^\s*(?P<low>-?\d*\.?\d*)\s*\.\.\s*(?P<high>-?\d*\.?\d*)\s*"
     )
     parsed_type = NumRangeParsed
-    root: str = PatternField(pattern=pattern)
+    root: Annotated[str, PatternField(pattern=pattern)]
 
-    low = PatternStringBase.parsed_property("low")
-    high = PatternStringBase.parsed_property("high")
+    low = PatternString.parsed_property("low")
+    high = PatternString.parsed_property("high")
 
 
-class NumRange(AnswerModel[NumRangeRoot]):
-    type: ClassVar[str] = "num_range"
-    root: NumRangeRoot
+class NumRange(AnswerModel[NumRangeStr]):
+    type: ClassVar[AnswerTypes.num_range] = "num_range"
 
     def to_num_tolerance(self):
         low, high = self.value.low, self.value.high
         return NumRange(f"{(high + low) / 2}|{(high - low) / 2}")
 
 
-class NumToleranceParsed(ParsedModelBase, title="NumTolerance"):
+class NumToleranceParsed(PatternParsedModel, title="NumTolerance"):
     value: DecimalNumber
     tolerance: DecimalNumber
     format: ClassVar[str] = "{value}|{tolerance}"
 
 
-class NumToleranceRoot(PatternStringBase):
+class NumToleranceStr(PatternString[NumToleranceParsed]):
     """Numerical answer with tolerance.
 
     Format: `{val}|{tolerance}`
@@ -440,21 +425,40 @@ class NumToleranceRoot(PatternStringBase):
     Both `val` and `tolerance` can be integer or floating point types.
     """
 
-    format: ClassVar[str] = "{value}|{tolerance}"
     pattern: ClassVar[str] = (
         r"^\s*(?P<value>-?\d*\.?\d*)\s*\|\s*(?P<tolerance>-?\d*\.?\d*)$"
     )
     parsed_type = NumToleranceParsed
-    root: str = PatternField(pattern=pattern)
+    root: Annotated[str, PatternField(pattern=pattern)]
 
-    value = PatternStringBase.parsed_property("value")
-    tolerance = PatternStringBase.parsed_property("tolerance")
+    value = PatternString.parsed_property("value")
+    tolerance = PatternString.parsed_property("tolerance")
 
 
-class NumTolerance(AnswerModel[NumToleranceRoot]):
-    type: ClassVar[str] = "num_tolerance"
-    root: NumToleranceRoot
+class NumTolerance(AnswerModel[NumToleranceStr]):
+    type: ClassVar[AnswerTypes.num_tolerance] = "num_tolerance"
 
     def to_num_range(self):
         value, tolerance = self.root.value, self.root.tolerance
         return NumRange(f"{value - tolerance}..{value + tolerance}")
+
+
+type Answer = (
+    SingleSelectChoices
+    | MultipleSelectChoices
+    | TrueOrFalse
+    | Integer
+    | NumRange
+    | NumTolerance
+    | ShortAnswer
+)
+
+type AnswerType = (
+    AnswerTypes.single_select_choices
+    | AnswerTypes.multiple_select_choices
+    | AnswerTypes.true_or_false
+    | AnswerTypes.num_int
+    | AnswerTypes.num_range
+    | AnswerTypes.num_tolerance
+    | AnswerTypes.short_answer
+)

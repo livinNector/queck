@@ -3,6 +3,7 @@ import re
 from functools import wraps
 from importlib.resources import files
 
+from pydantic import ValidationError
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
 
 from . import prompts
@@ -62,7 +63,7 @@ def remove_defaults(schema: dict) -> dict:
 
 
 class NoDefaultJsonSchema(GenerateJsonSchema):
-    def generate(self, schema, mode: str = "validation") -> JsonSchemaValue:
+    def generate(self, schema, mode="validation") -> JsonSchemaValue:
         original_schema = super().generate(schema, mode=mode)
         cleaned_schema = remove_defaults(original_schema)
         return cleaned_schema
@@ -113,17 +114,26 @@ def get_model(model_name):
         )
 
 
-def quiz2queck(quiz: Quiz):
+def quiz2queck(
+    quiz: Quiz,
+    ignore_n_correct: bool = True,
+    force_single_select: bool = True,
+    fix_multiple_select: bool = True,
+):
     quiz_dump = quiz.model_dump(
         context={"formatted": True}, exclude_none=True, exclude_defaults=True
     )
     try:
         return Queck.model_validate(
             quiz_dump,
-            context={"ignore_n_correct": True},
+            context={
+                "fix_multiple_select": fix_multiple_select,
+                "force_single_select": force_single_select,
+                "ignore_n_correct": ignore_n_correct,
+            },
         )
-    except Exception as e:
-        e.quiz_dump = quiz_dump
+    except ValidationError as e:
+        e.args = (quiz_dump,)
         raise e
 
 
@@ -157,10 +167,10 @@ def extract_queck(
         output_file (str): File name for the output.
     """
     try:
-        model = get_model(model)
+        model_chain = get_model(model)
         quiz_extraction_chain = (
             quiz_extraction_prompt.partial(prompt_extra=prompt_extra)
-            | model
+            | model_chain
             | get_validator(force_single_select=force_single_select)
         )
         with open(file_name) as f:
@@ -172,6 +182,6 @@ def extract_queck(
             queck.to_queck(output_file)
 
     except Exception as e:
-        if hasattr(e, "quiz_dump"):
-            yaml_dump(e.quiz_dump, output_file, extension="qk")
+        if e.args:
+            yaml_dump(e.args[0], output_file, extension="qk")
         raise e
