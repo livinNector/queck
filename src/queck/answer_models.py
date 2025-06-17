@@ -26,9 +26,9 @@ class AnswerTypes:
     single_select_choices = Literal["single_select_choices"]
     multiple_select_choices = Literal["multiple_select_choices"]
     short_answer = Literal["short_answer"]
-    num_int = Literal["num_int"]
-    num_range = Literal["num_range"]
-    num_tolerance = Literal["num_tolerance"]
+    numerical_integer = Literal["numerical_int"]
+    numerical_range = Literal["numerical_range"]
+    numerical_tolerance = Literal["numerical_tolerance"]
     true_or_false = Literal["true_or_false"]
 
 
@@ -365,7 +365,7 @@ class TrueOrFalse(AnswerModel[bool]):
 class Integer(AnswerModel[int]):
     """Numerical integer answer."""
 
-    type: ClassVar[AnswerTypes.num_int] = "num_int"
+    type: ClassVar[AnswerTypes.numerical_integer] = "numerical_int"
 
 
 class NumRangeParsed(PatternParsedModel, title="NumRange"):
@@ -401,7 +401,7 @@ class NumRangeStr(PatternString[NumRangeParsed]):
 
 
 class NumRange(AnswerModel[NumRangeStr]):
-    type: ClassVar[AnswerTypes.num_range] = "num_range"
+    type: ClassVar[AnswerTypes.numerical_range] = "numerical_range"
 
     def to_num_tolerance(self):
         low, high = self.value.low, self.value.high
@@ -436,7 +436,7 @@ class NumToleranceStr(PatternString[NumToleranceParsed]):
 
 
 class NumTolerance(AnswerModel[NumToleranceStr]):
-    type: ClassVar[AnswerTypes.num_tolerance] = "num_tolerance"
+    type: ClassVar[AnswerTypes.numerical_tolerance] = "numerical_tolerance"
 
     def to_num_range(self):
         value, tolerance = self.root.value, self.root.tolerance
@@ -457,8 +457,8 @@ type AnswerType = (
     AnswerTypes.single_select_choices
     | AnswerTypes.multiple_select_choices
     | AnswerTypes.true_or_false
-    | AnswerTypes.num_int
-    | AnswerTypes.num_range
-    | AnswerTypes.num_tolerance
+    | AnswerTypes.numerical_integer
+    | AnswerTypes.numerical_range
+    | AnswerTypes.numerical_tolerance
     | AnswerTypes.short_answer
 )
