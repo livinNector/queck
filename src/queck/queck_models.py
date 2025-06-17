@@ -1,36 +1,42 @@
 import abc
-import io
-from functools import cached_property
-from typing import Annotated, Any, Literal
+from decimal import Decimal
+from typing import (
+    Annotated,
+    ClassVar,
+    Iterable,
+    Literal,
+    Protocol,
+    Self,
+    runtime_checkable,
+)
 
+import yaml
+from IPython.core.magic import Magics, cell_magic, magics_class
+from IPython.core.magic_arguments import argument, magic_arguments, parse_argstring
+from jinja2 import Template
 from pydantic import (
-    BaseModel,
     ConfigDict,
     Field,
     StringConstraints,
+    TypeAdapter,
+    computed_field,
 )
-from ruamel.yaml import YAML
 
 from .answer_models import (
-    Integer,
-    MultipleSelectChoices,
+    Answer,
+    AnswerType,
     NumRange,
     NumTolerance,
-    ShortAnswer,
-    SingleSelectChoices,
     TrueOrFalse,
 )
-from .model_utils import DecimalNumber, MDStr
-from .render_utils import templates
-from .utils import Merger, write_file
-
-ru_yaml = YAML(typ="rt", plug_ins=[])
-ru_yaml.default_flow_style = False
-ru_yaml.indent(mapping=2, sequence=4, offset=2)
+from .model_utils import DataViewModel, DecimalNumber, MDStr
+from .render_utils import html_export_templates, md_component_templates
 
 
-def _str_presenter(dumper, data):
-    """Preserve multiline strings when dumping yaml.
+class QueckItemModel(abc.ABC, DataViewModel):
+    model_config = ConfigDict(extra="forbid")
+    text: MDStr
+
 
 @runtime_checkable
 class MarkedItem(Protocol):
@@ -51,27 +57,10 @@ class QuestionContainer(abc.ABC):
             Decimal(),
         )
 
-def load_yaml(content):
-    return yaml.load(content)
 
-
-QuestionType = Literal[
-    "single_select",
-    "multiple_select",
-    "numerical_answer",
-    "short_answer",
-    "description",
-    "common_data",
-]
-
-
-class QuestionBase(abc.ABC, BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    text: MDStr
-
-
-class Description(QuestionBase):
-    type: QuestionType = "description"
+class Description(QueckItemModel):
+    view_template: ClassVar[Template] = md_component_templates["question"]
+    type: Literal["description"] = "description"
     text: MDStr = Field(
         title="Description",
         description="Text only content used for holding instructions "
@@ -79,66 +68,54 @@ class Description(QuestionBase):
     )
 
 
-class Question(QuestionBase):
+class Question(QueckItemModel):
     """Question with an answer.
 
     Attributes:
-        - `text` : The statement or body of the question.
+        - text (MDStr): The statement or body of the question.
 
-        - `answer` : The expected answer, which can be:
-            - A list of choices (e.g., `Choice`).
+        - answer (AnswerUnion) : The expected answer, which can be:
+            - A list of choices.
             - A numerical value (integer, range, or tolerance).
             - A text response (string).
             - A boolean (True/False).
 
-        - `feedback` : Optional feedback or explanation about the question or its solution.
+        - feedback (MDStr | None) : Optional feedback or explanation about the question or its solution.
 
-        - `marks` : The marks allotted for the question (default is 0).
+        - marks (DecimalNumber | None) : The marks allotted for the question (default is 0).
 
-        - `tags` : A list of tags categorizing the question. Tags are stored in lowercase.
+        - tags (list[str]) : A list of tags categorizing the question. Tags are stored in lowercase.
     """  # noqa: E501
+
+    view_template: ClassVar[Template] = md_component_templates["question"]
 
     text: MDStr = Field(
         title="Question",
         default="Question statement",
         description="The statement or body of the question.",
     )
-    answer: (
-        SingleSelectChoices
-        | MultipleSelectChoices
-        | TrueOrFalse
-        | Integer
-        | NumRange
-        | NumTolerance
-        | ShortAnswer
-    )
+    answer: Answer
     feedback: MDStr | None = Field(
         default="",
         description="Optional feedback or explanation for the question. "
         "Can include solutions, hints, or clarifications.",
     )
     marks: DecimalNumber | None = Field(
-        default=0,
+        default=Decimal(0),
         description="The marks assigned to this question. Defaults to 0.",
     )
+
     tags: list[Annotated[str, StringConstraints(to_lower=True)]] | None = Field(
         default_factory=list, description="A list of tags categorizing the question."
     )
 
-    @cached_property
-    def type(self) -> QuestionType:
-        match self.answer:
-            case SingleSelectChoices() | TrueOrFalse():
-                return "single_select"
-            case MultipleSelectChoices():
-                return "multiple_select"
-            case ShortAnswer():
-                return "short_answer"
-            case Integer() | NumRange() | NumTolerance():
-                return "numerical_answer"
+    @computed_field(return_type=AnswerType)  # type: ignore[prop-decorator]
+    @property
+    def type(self):
+        return self.answer.type
 
 
-class CommonDataQuestion(QuestionBase):
+class CommonDataQuestion(QueckItemModel, QuestionContainer):
     """Represents a set of questions that share a common context or data.
 
     Attributes:
@@ -146,7 +123,8 @@ class CommonDataQuestion(QuestionBase):
         - `questions`: A list of questions based on the common context.
     """
 
-    type: QuestionType = "common_data"
+    view_template: ClassVar[Template] = md_component_templates["common_data_question"]
+    type: Literal["common_data_question"] = "common_data_question"
     text: MDStr = Field(
         title="CommonData",
         description="The shared context or common data for the questions.",
@@ -157,50 +135,34 @@ class CommonDataQuestion(QuestionBase):
         min_length=2,
     )
 
-    @property
-    def marks(self) -> int:
-        m = sum(
-            question.marks for question in self.questions if hasattr(question, "marks")
-        )
-        if int(m) == m:
-            return int(m)
-        return m
 
+OutputFormat = Literal["queck", "html", "md", "json"]
 
 QueckItem = Description | Question | CommonDataQuestion
 
 
-class Queck(BaseModel):
+class Queck(DataViewModel, QuestionContainer):
     """Represents a YAML-based quiz format.
 
     Contains a title and questions.
 
     Attributes:
-        - `title`: The title of the quiz.
-        - `questions`: A list of questions, which can be standalone \
+        - title (str): The title of the quiz.
+        - questions (list[Question]): A list of questions, which can be standalone \
             or grouped under a common context.
     """
 
+    view_template: ClassVar[Template] = md_component_templates["queck"]
     title: str = Field(default="Queck Title", description="The title of the quiz.")
     questions: list[QueckItem] = Field(
         description="A collection of questions, "
         "which may include standalone questions or common-data questions.",
     )
-    _yaml_content: Any | None = None
-
-    @property
-    def marks(self) -> int:
-        m = sum(
-            question.marks for question in self.questions if hasattr(question, "marks")
-        )
-        if int(m) == m:
-            return int(m)
-        return m
 
     @staticmethod
     def _answer_normalize(
         questions,
-        num_type: Literal["num_range", "num_tolerance"],
+        num_type: Literal["num_range", "num_tolerance"] | None = None,
         bool_to_choice: bool = False,
     ):
         for question in questions:
@@ -228,7 +190,7 @@ class Queck(BaseModel):
         num_type: Literal["num_range", "num_tolerance"] | None = None,
         bool_to_choice: bool = False,
         copy=False,
-    ) -> "Queck":
+    ) -> Self:
         """Normalizes the answer types.
 
         Args:
@@ -269,14 +231,9 @@ class Queck(BaseModel):
         Raises:
             ValidationError: if validation is not successfull
         """
-        if round_trip:
-            yaml_content = ru_yaml.load(queck_str)
-        else:
-            yaml_content = yaml.safe_load(queck_str)
-        result = cls.model_validate(yaml_content, context={"format_md": format_md})
-        if round_trip:
-            result._yaml_content = yaml_content
-        return result
+        return cls.from_yaml(
+            yaml_str=queck_str, format_md=format_md, round_trip=round_trip
+        )
 
     @classmethod
     def read_queck(cls, queck_file, format_md: bool = False, round_trip=False):
@@ -295,77 +252,125 @@ class Queck(BaseModel):
         Raises:
             ValidationError: if validation is not successfull
         """
-        with open(queck_file, "r") as f:
-            return cls.from_queck(f.read(), format_md=format_md, round_trip=round_trip)
+        return cls.read_yaml(
+            yaml_file=queck_file, format_md=format_md, round_trip=round_trip
+        )
 
-    def to_queck(self, file_name: str = None):
-        result = io.StringIO()
-        if self._yaml_content is None:
-            ru_yaml.dump(self.model_dump(exclude_defaults=True), result)
-        else:
-            Merger(extend_lists=True, extend_dicts=True).merge(
-                self._yaml_content, self.model_dump(exclude_defaults=True)
-            )
-            ru_yaml.dump(self._yaml_content, result)
-        result = result.getvalue()
-        if file_name:
-            write_file(file_name, result, extension="qk")
-        else:
-            return result
+    def to_queck(self, file_name: str | None = None):
+        return self.to_yaml(file_name=file_name, extension="qk")
 
     def to_json(
-        self, file_name: str = None, parsed: bool = False, rendered: bool = False
-    ):
-        result = self.model_dump_json(
-            indent=2, context={"parsed": parsed, "rendered": rendered}
-        )
-        if file_name:
-            if parsed:
-                write_file(file_name, result, extension="json")
-            else:
-                write_file(file_name, result, extension="qk.json")
-        else:
-            return result
-
-    def to_md(self, file_name: str = None):
-        result = templates["md"].render(
-            quiz=self.model_copy(deep=True).normalize_answers(bool_to_choice=True)
-        )
-        if file_name:
-            write_file(file_name, result, format="md")
-        else:
-            return result
-
-    def to_html(
         self,
-        file_name: str = None,
-        render_mode: Literal["fast", "latex", "compat"] = "fast",
+        file_name=None,
+        extension="json",
+        *,
+        parsed=False,
+        rendered=False,
+        format_md=False,
+        renderer=None,
+        render_env=None,
+        **kwargs,
+    ):
+        if parsed:
+            extension = "json"
+        else:
+            extension = "qk.json"
+
+        return super().to_json(
+            file_name,
+            extension,
+            parsed=parsed,
+            rendered=rendered,
+            format_md=format_md,
+            renderer=renderer,
+            render_env=render_env,
+            **kwargs,
+        )
+
+    def to_md(
+        self,
+        file_name=None,
+        extension="md",
+        *,
+        format=False,
+        overview: bool = False,
+        **kwargs,
+    ):
+        return super().to_md(
+            file_name, extension, format=format, overview=overview, **kwargs
+        )
+
+    def export_html(
+        self,
+        file_name: str | None = None,
+        render_mode: Literal["fast", "latex", "inline"] = "fast",
+        overview=False,
     ):
         assert render_mode in [
             "fast",
             "latex",
-            "compat",
-        ], 'render_mode must be one of "fast", "latex" or "compat"'
-        result = templates[render_mode].render(quiz=self)
-        if file_name:
-            write_file(file_name, result, format="html")
-        else:
-            return result
+            "inline",
+        ], 'render_mode must be one of "fast", "latex" or "inline"'
+        return self.to_file_or_str(
+            html_export_templates[render_mode].render(
+                data=self.normalize_answers(bool_to_choice=True, copy=True),
+                overview=overview,
+            ),
+            file_name,
+            "html",
+        )
 
     def export(
         self,
-        output_file=None,
-        format: Literal["queck", "html", "md", "json"] = "html",
-        render_mode: Literal["fast", "latex", "compat"] = "fast",
+        output_file: str | None = None,
+        format: OutputFormat = "html",
+        render_mode: Literal["fast", "latex", "inline"] = "fast",
+        overview: bool = False,
+        parsed: bool = False,
+        render_json: bool = False,
+        **kwargs,
     ):
-        """Exports the quiz file to the required format."""
+        """Export queck (YAML) files into the specified .
+
+        Args:
+            output_file (str) : Output file name
+            format (OutputFormat): Output format
+            render_mode : Rendering mode
+            overview (bool): Whether to add overview section
+            render_json (bool): Whether to render markdown to html in json
+            parsed (bool): Whether to add parsed choices
+            kwargs : Passed to model_dump
+        """
         match format:
             case "queck":
                 self.to_queck(output_file)
             case "html":
-                self.to_html(output_file, render_mode=render_mode)
+                self.export_html(
+                    output_file, render_mode=render_mode, overview=overview
+                )
             case "md":
-                self.to_md(output_file)
+                self.to_md(output_file, format=True, overview=overview)
             case "json":
-                self.to_json(output_file)
+                self.to_json(output_file, rendered=render_json, parsed=parsed, **kwargs)
         print(f"Quiz successfully exported to {output_file}")
+
+
+QueckItemAdapter: TypeAdapter = TypeAdapter(QueckItem)
+
+
+@magics_class
+class QueckMagic(Magics):
+    @magic_arguments()
+    @argument(
+        "--item",
+        "-i",
+        action="store_true",
+        help=("Render an item instead of a queck"),
+    )
+    @cell_magic
+    def queck(self, line, cell):
+        args = parse_argstring(self.queck, line)
+        if args.item:
+            return QueckItemAdapter.validate_python(yaml.safe_load(cell))
+        else:
+            return Queck.from_queck(cell)
