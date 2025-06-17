@@ -5,7 +5,7 @@ from typing import Literal
 import fire
 from watchfiles import awatch
 
-from .extract import extract_queck
+from .genai_utils import extract_queck
 from .live_server import LiveServer
 from .queck_models import Queck
 
