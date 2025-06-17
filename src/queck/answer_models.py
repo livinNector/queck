@@ -26,7 +26,7 @@ class AnswerTypes:
     single_select_choices = Literal["single_select_choices"]
     multiple_select_choices = Literal["multiple_select_choices"]
     short_answer = Literal["short_answer"]
-    numerical_integer = Literal["numerical_int"]
+    numerical_integer = Literal["numerical_integer"]
     numerical_range = Literal["numerical_range"]
     numerical_tolerance = Literal["numerical_tolerance"]
     true_or_false = Literal["true_or_false"]
@@ -365,7 +365,7 @@ class TrueOrFalse(AnswerModel[bool]):
 class Integer(AnswerModel[int]):
     """Numerical integer answer."""
 
-    type: ClassVar[AnswerTypes.numerical_integer] = "numerical_int"
+    type: ClassVar[AnswerTypes.numerical_integer] = "numerical_integer"
 
 
 class NumRangeParsed(PatternParsedModel, title="NumRange"):
