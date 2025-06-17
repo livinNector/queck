@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from queck.queck_models import MarkedQuestionContainer
+from queck.queck_models import QuestionContainer
 
 from .answer_models import (
     AnswerType,
@@ -98,7 +98,7 @@ class Question(BaseModel):
     tags: list[str] | None = Field(default_factory=list)
 
 
-class CommonDataQuestion(BaseModel, MarkedQuestionContainer):
+class CommonDataQuestion(BaseModel, QuestionContainer):
     """A set of questions based on a common data."""
 
     type: Literal["common_data"] = "common_data"
@@ -112,7 +112,7 @@ class Description(BaseModel):
     text: MDStr
 
 
-class Quiz(BaseModel, MarkedQuestionContainer):
+class Quiz(BaseModel, QuestionContainer):
     """A Set of questions with a title."""
 
     title: str

@@ -32,19 +32,24 @@ ru_yaml.indent(mapping=2, sequence=4, offset=2)
 def _str_presenter(dumper, data):
     """Preserve multiline strings when dumping yaml.
 
-    https://github.com/yaml/pyyaml/issues/240
-    """
-    if "\n" in data:
-        # Remove trailing spaces messing out the output.
-        block = "\n".join([line.rstrip() for line in data.splitlines()])
-        if data.endswith("\n"):
-            block += "\n"
-        return dumper.represent_scalar("tag:yaml.org,2002:str", block, style="|")
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+@runtime_checkable
+class MarkedItem(Protocol):
+    marks: DecimalNumber | None
 
 
-ru_yaml.representer.add_representer(str, _str_presenter)
+class QuestionContainer(abc.ABC):
+    questions: Iterable
 
+    @property
+    def marks(self):
+        return sum(
+            (
+                question.marks or Decimal()
+                for question in self.questions
+                if isinstance(question, MarkedItem)
+            ),
+            Decimal(),
+        )
 
 def load_yaml(content):
     return yaml.load(content)
