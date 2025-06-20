@@ -12,7 +12,7 @@ from typing import (
 
 import yaml
 from IPython.core.magic import Magics, cell_magic, magics_class
-from IPython.core.magic_arguments import argument, magic_arguments, parse_argstring
+from IPython.core.magic_arguments import magic_arguments
 from jinja2 import Template
 from pydantic import (
     BaseModel,
@@ -422,22 +422,12 @@ class Queck(DataViewModel, QueckQuestionContainer):
         print(f"Quiz successfully exported to {output_file}")
 
 
-QueckItemAdapter: TypeAdapter = TypeAdapter(QueckItem)
+QueckAnyAdapter: TypeAdapter = TypeAdapter(QueckItem | Queck)
 
 
 @magics_class
 class QueckMagic(Magics):
     @magic_arguments()
-    @argument(
-        "--item",
-        "-i",
-        action="store_true",
-        help=("Render an item instead of a queck"),
-    )
     @cell_magic
     def queck(self, line, cell):
-        args = parse_argstring(self.queck, line)
-        if args.item:
-            return QueckItemAdapter.validate_python(yaml.safe_load(cell))
-        else:
-            return Queck.from_queck(cell)
+        return QueckAnyAdapter.validate_python(yaml.safe_load(cell))
