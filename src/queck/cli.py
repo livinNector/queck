@@ -1,5 +1,6 @@
 import asyncio
 import os
+from functools import wraps
 from typing import Literal
 
 import fire
@@ -23,7 +24,16 @@ class QueckCli:
                 queck_file
             )
 
-    extract = extract_queck
+    @staticmethod
+    @wraps(extract_queck)
+    def extract(file_name, model, prompt_extra, force_single_select, output_file):
+        extract_queck(
+            file_name=file_name,
+            model=model,
+            prompt_extra=prompt_extra,
+            force_single_select=force_single_select,
+            output_file=output_file or file_name,
+        )
 
     def export(
         self,
@@ -35,7 +45,7 @@ class QueckCli:
         render_json=False,
         parsed=False,
         watch=False,
-        kwargs: dict|None={},
+        kwargs: dict | None = {},
     ):
         """Export queck (YAML) files into the specified .
 
