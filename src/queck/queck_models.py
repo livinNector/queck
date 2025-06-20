@@ -257,7 +257,13 @@ class Queck(DataViewModel, QuestionContainer):
         )
 
     def to_queck(self, file_name: str | None = None):
-        return self.to_yaml(file_name=file_name, extension="qk")
+        return self.to_yaml(
+            file_name=file_name,
+            extension="qk",
+            exclude_defaults=True,
+            exclude_none=True,
+            exclude_unset=True,
+        )
 
     def to_json(
         self,
