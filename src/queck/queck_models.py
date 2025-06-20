@@ -15,6 +15,7 @@ from IPython.core.magic import Magics, cell_magic, magics_class
 from IPython.core.magic_arguments import argument, magic_arguments, parse_argstring
 from jinja2 import Template
 from pydantic import (
+    BaseModel,
     ConfigDict,
     Field,
     StringConstraints,
@@ -44,7 +45,7 @@ class MarkedItem(Protocol):
 
 
 class QuestionContainer(abc.ABC):
-    questions: Iterable
+    questions: list
 
     @property
     def marks(self):
@@ -109,13 +110,73 @@ class Question(QueckItemModel):
         default_factory=list, description="A list of tags categorizing the question."
     )
 
-    @computed_field(return_type=AnswerType)  # type: ignore[prop-decorator]
-    @property
-    def type(self):
-        return self.answer.type
+
+class QueckQuestionContainer(QuestionContainer, BaseModel):
+    questions: list
+
+    @staticmethod
+    def _answer_normalize(
+        questions,
+        num_type: AnswerTypes.numerical_range
+        | AnswerTypes.numerical_tolerance
+        | None = None,
+        bool_to_choice: bool = False,
+    ):
+        for question in questions:
+            match question:
+                case Question():
+                    match question.answer:
+                        case NumRange():
+                            if num_type == "numerical_tolerance":
+                                question.answer = question.answer.to_num_tolerance()
+                        case NumTolerance():
+                            if num_type == "numerical_range":
+                                question.answer = question.answer.to_num_range()
+                        case TrueOrFalse():
+                            if bool_to_choice:
+                                question.answer = question.answer.to_single_select()
+                case QueckQuestionContainer():
+                    QueckQuestionContainer._answer_normalize(
+                        question.questions,
+                        num_type=num_type,
+                        bool_to_choice=bool_to_choice,
+                    )
+
+    def normalize_answers(
+        self,
+        num_type: AnswerTypes.numerical_range
+        | AnswerTypes.numerical_tolerance
+        | None = None,
+        bool_to_choice: bool = False,
+        copy: bool = False,
+    ) -> Self:
+        """Normalizes the answer types.
+
+        Args:
+            num_type (Literal['numerical_range','numerical_tolerance']|None):
+                Type of numeric interval to use.
+                If set to `None`, num_types remains unchanged.
+            bool_to_choice (bool):
+                Whether to change TrueOrFalse to SingleSelectChoices
+            copy (bool):
+                Whether to return a new object instead of modifying the original.
+
+        Returns:
+            Self: The normalized QueckQuestionContainer object.
+        """
+        if copy:
+            question_container = self.model_copy(deep=True)
+        else:
+            question_container = self
+        QueckQuestionContainer._answer_normalize(
+            question_container.questions,
+            num_type=num_type,
+            bool_to_choice=bool_to_choice,
+        )
+        return question_container
 
 
-class CommonDataQuestion(QueckItemModel, QuestionContainer):
+class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
     """Represents a set of questions that share a common context or data.
 
     Attributes:
@@ -141,7 +202,7 @@ OutputFormat = Literal["queck", "html", "md", "json"]
 QueckItem = Description | Question | CommonDataQuestion
 
 
-class Queck(DataViewModel, QuestionContainer):
+class Queck(DataViewModel, QueckQuestionContainer):
     """Represents a YAML-based quiz format.
 
     Contains a title and questions.
