@@ -59,9 +59,24 @@ class QuestionContainer(abc.ABC):
         )
 
 
+class QueckItemTypes:
+    description = Literal["description"]
+    question = Literal["question"]
+    common_data_question = Literal["common_data_question"]
+
+
+type QueckItemType = (
+    QueckItemTypes.description
+    | QueckItemTypes.question
+    | QueckItemTypes.common_data_question
+)
+
+type QueckItem = Description | Question | CommonDataQuestion
+
+
 class Description(QueckItemModel):
     view_template: ClassVar[Template] = md_component_templates["question"]
-    type: Literal["description"] = "description"
+    type: QueckItemTypes.description = "description"
     text: MDStr = Field(
         title="Description",
         description="Text only content used for holding instructions "
@@ -88,6 +103,7 @@ class Question(QueckItemModel):
         - tags (list[str]) : A list of tags categorizing the question. Tags are stored in lowercase.
     """  # noqa: E501
 
+    type: QueckItemTypes.question = "question"
     view_template: ClassVar[Template] = md_component_templates["question"]
 
     text: MDStr = Field(
@@ -185,7 +201,7 @@ class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
     """
 
     view_template: ClassVar[Template] = md_component_templates["common_data_question"]
-    type: Literal["common_data_question"] = "common_data_question"
+    type: QueckItemTypes.common_data_question = "common_data_question"
     text: MDStr = Field(
         title="CommonData",
         description="The shared context or common data for the questions.",
@@ -199,8 +215,6 @@ class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
 
 OutputFormat = Literal["queck", "html", "md", "json"]
 
-QueckItem = Description | Question | CommonDataQuestion
-
 
 class Queck(DataViewModel, QueckQuestionContainer):
     """Represents a YAML-based quiz format.
@@ -213,6 +227,7 @@ class Queck(DataViewModel, QueckQuestionContainer):
             or grouped under a common context.
     """
 
+    type: Literal["queck"] = "queck"
     view_template: ClassVar[Template] = md_component_templates["queck"]
     title: str = Field(default="Queck Title", description="The title of the quiz.")
     questions: list[QueckItem] = Field(
