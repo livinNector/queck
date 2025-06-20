@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import abc
 from decimal import Decimal
 from typing import (
     Annotated,
     ClassVar,
-    Iterable,
     Literal,
     Protocol,
     Self,
@@ -20,12 +21,11 @@ from pydantic import (
     Field,
     StringConstraints,
     TypeAdapter,
-    computed_field,
 )
 
 from .answer_models import (
     Answer,
-    AnswerType,
+    AnswerTypes,
     NumRange,
     NumTolerance,
     TrueOrFalse,
@@ -217,78 +217,24 @@ OutputFormat = Literal["queck", "html", "md", "json"]
 
 
 class Queck(DataViewModel, QueckQuestionContainer):
-    """Represents a YAML-based quiz format.
+    """A set of questions or Quecks with a title.
 
     Contains a title and questions.
 
     Attributes:
-        - title (str): The title of the quiz.
-        - questions (list[Question]): A list of questions, which can be standalone \
+        title (str): The title of the queck.
+        questions (list[QueckItem]|list[Queck]):
+            A list of questions, which can be standalone
             or grouped under a common context.
     """
 
     type: Literal["queck"] = "queck"
     view_template: ClassVar[Template] = md_component_templates["queck"]
-    title: str = Field(default="Queck Title", description="The title of the quiz.")
-    questions: list[QueckItem] = Field(
+    title: str = Field(description="The title of the queck.")
+    questions: list[QueckItem] | list[Queck] = Field(
         description="A collection of questions, "
         "which may include standalone questions or common-data questions.",
     )
-
-    @staticmethod
-    def _answer_normalize(
-        questions,
-        num_type: Literal["num_range", "num_tolerance"] | None = None,
-        bool_to_choice: bool = False,
-    ):
-        for question in questions:
-            match question:
-                case Question():
-                    match question.answer:
-                        case NumRange():
-                            if num_type == "num_tolerance":
-                                question.answer = question.answer.to_num_tolerance()
-                        case NumTolerance():
-                            if num_type == "num_range":
-                                question.answer = question.answer.to_num_range()
-                        case TrueOrFalse():
-                            if bool_to_choice:
-                                question.answer = question.answer.to_single_select()
-                case CommonDataQuestion():
-                    Queck._answer_normalize(
-                        question.questions,
-                        num_type=num_type,
-                        bool_to_choice=bool_to_choice,
-                    )
-
-    def normalize_answers(
-        self,
-        num_type: Literal["num_range", "num_tolerance"] | None = None,
-        bool_to_choice: bool = False,
-        copy=False,
-    ) -> Self:
-        """Normalizes the answer types.
-
-        Args:
-            num_type (Literal['num_range','num_tolerance']|None):
-                Type of numeric interval to use consistently.
-                If set to `None`, num_types remains unchanged.
-            bool_to_choice (bool):
-                Whether to change true of false to Single Select Choices.
-            copy (bool):
-                Whether to return a new queck instead of modifying the original.
-
-        Returns:
-            Queck: The normalized Queck object.
-        """
-        if copy:
-            queck = self.model_copy(deep=True)
-        else:
-            queck = self
-        Queck._answer_normalize(
-            queck.questions, num_type=num_type, bool_to_choice=bool_to_choice
-        )
-        return queck
 
     @classmethod
     def from_queck(cls, queck_str: str, format_md: bool = False, round_trip=False):
