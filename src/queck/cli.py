@@ -72,9 +72,19 @@ class QueckCli:
                 render_mode=render_mode,
                 render_json=render_json,
                 parsed=parsed,
+                **kwargs,
             )
             asyncio.run(
-                self._watch_and_export(queck_files, output_dir, format, render_mode)
+                self._watch_and_export(
+                    *queck_files,
+                    output_dir=output_dir,
+                    format=format,
+                    overview=overview,
+                    render_mode=render_mode,
+                    render_json=render_json,
+                    parsed=parsed,
+                    **kwargs,
+                )
             )
         else:
             # Export files without watching for changes
@@ -107,7 +117,9 @@ class QueckCli:
                 except Exception as e:
                     print(e)
 
-    async def _watch_and_export(self, queck_files, output_dir, format, render_mode):
+    async def _watch_and_export(
+        self, *queck_files, output_dir, format, render_mode, **kwargs
+    ):
         print("Watching for changes...")
         print(queck_files)
         if format == "html":
@@ -127,6 +139,7 @@ class QueckCli:
                 output_dir=output_dir,
                 format=format,
                 render_mode=render_mode,
+                **kwargs,
             )
             if format == "html":
                 await self.live_server.send_reload_signal()
