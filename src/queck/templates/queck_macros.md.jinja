@@ -1,22 +1,8 @@
-{% macro render_overview(quiz)-%}
-{%macro overview_row(name, type)-%}
-{%-set questions = quiz.questions|selectattr('type', "in", type) | list -%}
-| {{name}} | {{ questions | length }} | {{questions | map(attribute='marks') | sum}} |
-{%-endmacro -%}
-## Overview
-
-| Question Type       | Count | Marks|
-|---------------------|-------|------|
-{{overview_row('Single Select',['single_select_choices'])}}
-{{overview_row('Multiple Select',['multiple_select_choices'])}}
-{{overview_row('Numerical',['num_int','num_range','num_tolerance'])}}
-{{overview_row('Short Answer',['short_answer'])}}
-{{overview_row('Common Data',['common_data'])}}
-
----
-{%- endmacro %}
-{% macro render_question(question, index=none, level=1,for_html_export=false) %}
-{{"#"*level}}{%if index%} Question {{ index }}{%endif%} [{{ question.type.split('_') | join(" ") | title }}]{%if question.marks %} ({{question.marks}} marks){%endif%}
+{%from './overview.md.jinja' import render_overview-%}
+{% macro render_question(question,type_labels, index=none, level=1,for_html_export=false) %}
+{%- set type = question.answer.type if question.type =='question' else question.type%}
+{{-'<div class="no-break">\n' if for_html_export else ''}}
+{{"#"*level}}{%if index%} Question {{ index }}{%endif%} [{{ type_labels.get(type, None) }}]{%if question.marks %} ({{question.marks}} marks){%endif%}
 
 {%if question.tags-%}
 ***Tags:*** {% set comma = joiner(", ") -%}{%for tag in question.tags%}{{comma()}}`{{tag}}`{%endfor %}
@@ -24,8 +10,8 @@
 {%endif -%}
 {{-'\n<div class="fit-width">\n\n' if for_html_export else ''-}}
 {{ question.text }}  
-{{"\n\n</div>\n" if for_html_export else ''-}}
-{% set answer = question.answer or None -%}
+{{"\n\n</div>\n\n" if for_html_export else ''-}}
+{% set answer = (question|attr('answer')|default(None)) -%}
 {% if answer.type in ['single_select_choices','multiple_select_choices'] -%}
 {%- for choice in answer.root %}
 - [{{ 'x' if choice.is_correct else ' '  }}] {{"<!---->\n    " if choice.text.startswith("```") or choice.text.startswith("$$")  else ""-}}
@@ -34,54 +20,60 @@
     _{{ choice.feedback }}_
     {%- endif -%}
 {%- endfor -%}
-{%- elif answer.type == "num_int" %}
+{%- elif answer.type == "numerical_integer" %}
 **Answer:** ${{ answer.value }}$
-{%- elif answer.type == "num_range" %}
+{%- elif answer.type == "numerical_range" %}
 **Answer:** ${{ answer.value.low }}$ to ${{ answer.value.high }}$
-{%- elif answer.type == "num_tolerance" %}
+{%- elif answer.type == "numerical_tolerance" %}
 **Answer:** ${{ answer.value.value }}$ ± ${{ answer.value.tolerance }}$
 {%- elif answer.type in ["short_answer","true_or_false"] %}
 **Answer:** {{ answer.value }}
 {%- endif %}
+{{'\n\n</div>\n\n' if for_html_export else ''-}}
 {%if question.feedback %}
 {{'<div class="no-break">\n' if for_html_export else ''-}}
 **Feedback**  
 {{ question.feedback }}
-{{'<div>\n' if for_html_export else ''-}}
+{{'\n\n</div>\n\n' if for_html_export else ''-}}
 {% endif -%}
+{{'\n\n</div>\n\n' if for_html_export else ''-}}
 {% endmacro -%}
 
-{%- macro render_common_data_question(question, index, for_html_export=false)%}
-{{-'<div class="no-break">\n' if for_html_export else ''}}
-## {%if index%}Question {{index}} {%endif%}[Common Data]{%if question.marks %} ({{question.marks}} marks){%endif%}
+{%- macro render_common_data_question(question, type_labels,index=none, level=1, for_html_export=false)%}
+{{-'\n<div class="no-break">\n\n' if for_html_export else ''}}
 
-### Common data{%if index%} for {{index}}.1 to {{index}}.{{question.questions |length}}{%endif%}
+{{"#" * level}} {%if index%}Question {{index}} {%endif%}[{{type_labels.get(question.type,None)}}]{%if question.marks %} ({{question.marks}} marks){%endif%}
+
+{{"#" * (level+1)}} Common data{%if index%} for {{index}}.1 to {{index}}.{{question.questions |length}}{%endif%}
 
 {{'\n<div class="fit-width">\n\n' if for_html_export else ''-}}
 {{ question.text }}
-{{-"\n\n</div>\n" if for_html_export else ''}}
+{{-"\n\n</div>\n</div>\n\n" if for_html_export else ''}}
 {%for inner_question in question.questions -%}
-{{-'\n<div class="no-break">\n' if for_html_export else ''-}}
-{{ render_question(inner_question, index~"."~loop.index if index else loop.index, level=3, for_html_export=for_html_export) }}
-{{-"\n</div>" if for_html_export else ''-}}
+{{ render_question(inner_question, type_labels,index~"."~loop.index if index else loop.index, level=level+1, for_html_export=for_html_export) }}
 {%- endfor -%}
 {% endmacro -%}
 
-{%- macro render_quiz(quiz,overview,for_html_export=false)-%}
+{%- macro render_quiz(quiz,overview=none,type_labels=none,level=1,for_html_export=false)-%}
 
-# {{ quiz.title }} {%if quiz.marks %}({{quiz.marks}} marks){%endif%}
-{% if overview%}
-{{render_overview(quiz)}}
+{{"#" * level}} {{ quiz.title }} {%if quiz.marks %}({{quiz.marks}} marks){%endif%}
+{% if overview  %}
+## Overview
+{{render_overview(overview)}}
+---
+
 {% endif -%}
-{% set question_count = 0 -%}
+{% set ns = namespace(question_count=0) -%}
 {%- for item in quiz.questions -%}
-{%- if item.type == "common_data" -%}
-{%- set index = loop.index -%}
-{{ render_common_data_question(item, loop.index, for_html_export=for_html_export)}}
+{%- if item.type != "description" -%}
+{% set ns.question_count = ns.question_count + 1 -%}
+{%-endif %}
+{%- if item.type == "queck" -%}
+{{ render_quiz(item,type_labels=type_labels,level=level+1, for_html_export=for_html_export)}}
+{%- elif item.type == "common_data_question" -%}
+{{ render_common_data_question(item, type_labels, index=ns.question_count,level=level+1, for_html_export=for_html_export)}}
 {%- else -%}
-{{-'\n<div class="no-break">\n' if for_html_export else ''-}}
-{{ render_question(item, loop.index, level=2, for_html_export=for_html_export) }}
-{{-"\n</div>\n" if for_html_export else ''-}}
+{{ render_question(item, type_labels, None if item.type == 'description' else ns.question_count, level=level+1, for_html_export=for_html_export) }}
 {%- endif -%}
 {%- endfor -%}
 {% endmacro -%}

@@ -1,0 +1,32 @@
+{%- macro render_table(type_stats)-%}
+| Question Type | Count | Marks |
+| ------------- | ----- | ----- |
+{%- for stats in type_stats %}
+| {{ stats.label}} | {{ stats.count }} | {{ stats.marks }} |
+{%- endfor %}
+{% endmacro%}
+
+{%- macro render_type_stats(type_stats) %}
+{{render_table(type_stats)}}
+{%- if type_stats[-1]|attr('common_data_stats') is defined %}
+<details>
+<summary>Overview of {{type_stats[-1].label}}</summary>
+
+{{render_table(type_stats[-1].common_data_stats)}}
+</details>
+{% endif %}
+{%- endmacro %}
+
+
+{%- macro render_overview(overview,level=1) %}
+{%- if overview[0]|attr('title') is defined  %}
+{%- for section_overview in overview %}
+{{loop.index}}. **{{ section_overview.title }} ({{section_overview.total_marks}} marks)**
+{% filter indent(3) %}
+{{- render_overview(section_overview.overview,level=level+1) }}
+{%- endfilter -%}
+{%- endfor %}
+{%- else %}
+{{- render_type_stats(overview)}}
+{%- endif %}
+{%- endmacro %}

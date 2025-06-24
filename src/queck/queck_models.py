@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+from collections import defaultdict
 from decimal import Decimal
 from typing import (
     Annotated,
@@ -26,18 +27,21 @@ from pydantic import (
 
 from .answer_models import (
     Answer,
+    AnswerType,
     AnswerTypes,
     NumRange,
     NumTolerance,
     TrueOrFalse,
 )
 from .model_utils import DataViewModel, DecimalNumber, MDStr
+from .queck_utils import (
+    Overview,
+    OverviewCommonDataStats,
+    OverviewGroupStats,
+    queck_config,
+)
 from .render_utils import html_export_templates, md_component_templates
-
-
-class QueckItemModel(abc.ABC, DataViewModel):
-    model_config = ConfigDict(extra="forbid")
-    text: MDStr
+from .utils import get_literal_union_args
 
 
 @runtime_checkable
@@ -257,6 +261,75 @@ class Queck(DataViewModel, QueckQuestionContainer):
         "which may include standalone questions or common-data questions.",
     )
 
+    @staticmethod
+    def _overview(
+        q: Queck | CommonDataQuestion | QueckQuestionContainer[Question],
+        type_labels: dict[str, str],
+    ):
+        match q:
+            case Queck(questions=[Queck(), *_] as questions):
+                return [
+                    Overview(
+                        title=queck.title,
+                        total_marks=queck.marks,
+                        overview=Queck._overview(queck, type_labels=type_labels),
+                    )
+                    for queck in questions
+                    if queck.type == "queck"
+                ]
+            case QueckQuestionContainer(questions=questions):
+                question_group_dict: dict[str, list[Question]] = defaultdict(list)
+                common_data_questions: list[CommonDataQuestion] = []
+
+                for question in questions:
+                    if question.type == "question":
+                        question_group_dict[type_labels[question.answer.type]].append(
+                            question
+                        )
+                    elif question.type == "common_data_question":
+                        common_data_questions.append(question)
+                overview_order = []
+                for type_name in get_literal_union_args(AnswerType):
+                    label = type_labels[type_name]
+                    if label in question_group_dict and label not in overview_order:
+                        overview_order.append(label)
+                overview_list = [
+                    OverviewGroupStats(
+                        label=label,
+                        marks=QueckQuestionContainer(
+                            questions=(questions := question_group_dict[label])
+                        ).marks,
+                        count=len(questions),
+                    )
+                    for label in overview_order
+                ]
+
+                if common_data_questions:
+                    common_data_combined = QueckQuestionContainer(
+                        questions=[
+                            inner_question
+                            for question in common_data_questions
+                            for inner_question in question.questions
+                        ]
+                    )
+                    common_data_label = type_labels["common_data_question"]
+                    overview_list += [
+                        OverviewCommonDataStats(
+                            label=common_data_label,
+                            marks=common_data_combined.marks,
+                            count=len(common_data_questions),
+                            common_data_stats=Queck._overview(
+                                common_data_combined,
+                                type_labels=type_labels,
+                            ),
+                        )
+                    ]
+
+                return overview_list
+
+    def overview(self, type_labels: dict[str, str] | None = None):
+        return self._overview(self, type_labels=type_labels or queck_config.type_labels)
+
     @classmethod
     def from_queck(cls, queck_str: str, format_md: bool = False, round_trip=False):
         """Loads and validates the queck YAML string.
@@ -342,19 +415,29 @@ class Queck(DataViewModel, QueckQuestionContainer):
         extension="md",
         *,
         format=False,
+        type_labels: dict[str, str] | None = None,
         overview: bool = False,
         **kwargs,
     ):
+        type_labels = queck_config.type_labels | (type_labels or {})
+
         return super().to_md(
-            file_name, extension, format=format, overview=overview, **kwargs
+            file_name,
+            extension,
+            format=format,
+            type_labels=type_labels,
+            overview=overview and self.overview(type_labels=type_labels),
+            **kwargs,
         )
 
     def export_html(
         self,
         file_name: str | None = None,
         render_mode: Literal["fast", "latex", "inline"] = "fast",
+        type_labels: dict[str, str] | None = None,
         overview=False,
     ):
+        type_labels = queck_config.type_labels | (type_labels or {})
         assert render_mode in [
             "fast",
             "latex",
@@ -363,7 +446,8 @@ class Queck(DataViewModel, QueckQuestionContainer):
         return self.to_file_or_str(
             html_export_templates[render_mode].render(
                 data=self.normalize_answers(bool_to_choice=True, copy=True),
-                overview=overview,
+                overview=overview and self.overview(type_labels=type_labels),
+                type_labels=type_labels,
             ),
             file_name,
             "html",
@@ -398,7 +482,7 @@ class Queck(DataViewModel, QueckQuestionContainer):
                     output_file, render_mode=render_mode, overview=overview
                 )
             case "md":
-                self.to_md(output_file, format=True, overview=overview)
+                self.to_md(output_file, format=True, overview=overview, **kwargs)
             case "json":
                 self.to_json(output_file, rendered=render_json, parsed=parsed, **kwargs)
         print(f"Quiz successfully exported to {output_file}")

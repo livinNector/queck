@@ -106,7 +106,7 @@ main {
 }
 
 .no-break {
-  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 pre {
