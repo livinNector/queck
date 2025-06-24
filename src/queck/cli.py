@@ -62,6 +62,7 @@ class QueckCli:
         Returns:
             None
         """
+        kwargs = kwargs or {}
         if watch:
             # Run the file watcher asynchronously to monitor file changes
             self.export(
