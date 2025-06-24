@@ -1,4 +1,6 @@
 import os
+from types import GenericAlias
+from typing import TypeAliasType, TypeVar, Union, get_args, get_origin
 
 
 def safe_write_file(file_name, content, extension=None, force=False):
@@ -43,3 +45,26 @@ class Merger:
                 for k in b.keys():
                     if k not in a_keys:
                         a[k] = b[k]
+
+
+def _unwrap_union(type_var, subs=None):
+    if isinstance(type_var, GenericAlias):
+        subs = dict(zip(get_origin(type_var).__type_params__, get_args(type_var)))
+        return _unwrap_union(get_origin(type_var), subs)
+    if isinstance(type_var, TypeAliasType):
+        if get_origin(type_var.__value__) == Union:
+            return Union[
+                tuple(
+                    _unwrap_union(inner_type, subs=subs)
+                    for inner_type in get_args(type_var.__value__)
+                )
+            ]
+        return _unwrap_union(type_var.__value__, subs=subs)
+    if isinstance(type_var, TypeVar):
+        subs = subs or {}
+        return subs.get(type_var)
+    return type_var
+
+
+def get_literal_union_args(type):
+    return list(map(lambda x: get_args(x)[0], (get_args(_unwrap_union(type)))))
