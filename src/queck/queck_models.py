@@ -8,6 +8,7 @@ from typing import (
     Literal,
     Protocol,
     Self,
+    Sequence,
     runtime_checkable,
 )
 
@@ -44,8 +45,8 @@ class MarkedItem(Protocol):
     marks: DecimalNumber | None
 
 
-class QuestionContainer(abc.ABC):
-    questions: list
+class QuestionContainer[T](abc.ABC):
+    questions: Sequence[T]
 
     @property
     def marks(self):
@@ -127,8 +128,8 @@ class Question(QueckItemModel):
     )
 
 
-class QueckQuestionContainer(QuestionContainer, BaseModel):
-    questions: list
+class QueckQuestionContainer[T](QuestionContainer[T], BaseModel):
+    questions: Sequence[T]
 
     @staticmethod
     def _answer_normalize(
@@ -206,7 +207,7 @@ class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
         title="CommonData",
         description="The shared context or common data for the questions.",
     )
-    questions: list[Question] = Field(
+    questions: Sequence[Question] = Field(
         title="ContextualQuestions",
         description="A list of questions related to the common data.",
         min_length=2,
@@ -231,7 +232,7 @@ class Queck(DataViewModel, QueckQuestionContainer):
     type: Literal["queck"] = "queck"
     view_template: ClassVar[Template] = md_component_templates["queck"]
     title: str = Field(description="The title of the queck.")
-    questions: list[QueckItem] | list[Queck] = Field(
+    questions: Sequence[QueckItem] | Sequence[Queck] = Field(
         description="A collection of questions, "
         "which may include standalone questions or common-data questions.",
     )
