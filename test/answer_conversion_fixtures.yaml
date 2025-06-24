@@ -1,0 +1,57 @@
+- title: True or False - True
+  method: to_single_select
+  source:
+    model: TrueOrFalse
+    item: true
+  target:
+    model: SingleSelectChoices
+    item:
+      - (o) True
+      - ( ) False
+
+- title: True or False - True
+  method: to_single_select
+  source:
+    model: TrueOrFalse
+    item: false
+  target:
+    model: SingleSelectChoices
+    item:
+      - ( ) True
+      - (o) False
+
+- title: Tolerance to Range Conversion
+  method: to_num_range
+  source:
+    model: NumTolerance
+    item: 1|.5
+  target:
+    model: NumRange
+    item: 0.5..1.5
+
+- title: Tolerance to Range Conversion - 2
+  method: to_num_range
+  source:
+    model: NumTolerance
+    item: 1|.3
+  target:
+    model: NumRange
+    item: 0.7..1.3
+
+- title: Range to Tolerance Conversion
+  method: to_num_tolerance
+  source:
+    model: NumRange
+    item: 0.5..1.5
+  target:
+    model: NumTolerance
+    item: 1|.5
+
+- title: Range to Tolerance Conversion - 2
+  method: to_num_tolerance
+  source:
+    model: NumRange
+    item: 0.7..1.3
+  target:
+    model: NumTolerance
+    item: 1|.3

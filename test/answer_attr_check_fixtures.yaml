@@ -1,0 +1,27 @@
+- title: Single Select Choices
+  model: SingleSelectChoices
+  item:
+    - (o) Correct Answer
+    - ( ) Incorrect Answer
+  attrs:
+    - name: n_correct
+      value: 1
+    - name: n_incorrect
+      value: 1
+- title: Single Select Choices
+  model: MultipleSelectChoices
+  item:
+    - (x) Correct
+    - (x) Also Correct
+    - ( ) Incorrect
+  attrs:
+    - name: n_correct
+      value: 2
+    - name: n_incorrect
+      value: 1
+- title: True Or False Value
+  model: TrueOrFalse
+  item: true
+  attrs:
+    - name: value
+      value: true
