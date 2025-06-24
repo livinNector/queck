@@ -2,6 +2,8 @@ import os
 from types import GenericAlias
 from typing import TypeAliasType, TypeVar, Union, get_args, get_origin
 
+from pydantic import BaseModel
+
 
 def safe_write_file(file_name, content, extension=None, force=False):
     """Writes to a file without overwriting it."""
@@ -25,6 +27,10 @@ class Merger:
         self.extend_dicts = extend_dicts
 
     def merge(self, a, b):
+        """Merge two json like nested objects.
+
+        Values in `b` overrides values in `a`.
+        """
         if isinstance(b, list):
             for i in range(min(len(a), len(b))):
                 if not isinstance(b[i], (list, dict)):
@@ -45,6 +51,16 @@ class Merger:
                 for k in b.keys():
                     if k not in a_keys:
                         a[k] = b[k]
+
+    def merge_models(self, a: BaseModel, b: BaseModel) -> BaseModel:
+        """Merges two pydantic models and returns the merged model.
+
+        Values in `b` overrides values in `a`.
+        """
+        result = a.model_dump()
+        self.merge(result, b.model_dump())
+        model = type(a)
+        return model.model_validate(result)
 
 
 def _unwrap_union(type_var, subs=None):
