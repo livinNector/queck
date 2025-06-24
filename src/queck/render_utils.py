@@ -61,6 +61,12 @@ mdit_renderers["inline"] = (
 )
 
 
+def get_package_env():
+    return Environment(
+        loader=PackageLoader("queck", "templates"), autoescape=select_autoescape()
+    )
+
+
 def get_mdit_render_env(
     mdit: MarkdownIt | None = None,
     globals: dict | None = None,
@@ -68,9 +74,7 @@ def get_mdit_render_env(
 ):
     if mdit is None:
         mdit = mdit_renderers["base"]
-    env = Environment(
-        loader=PackageLoader("queck", "templates"), autoescape=select_autoescape()
-    )
+    env = get_package_env()
     env.filters["mdformat"] = md_format
     env.filters["md"] = mdit.render
     if filters is not None:
