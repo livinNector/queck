@@ -35,6 +35,7 @@ from .utils import Merger, write_file
 
 ru_yaml = YAML(typ="rt", plug_ins=[])
 ru_yaml.default_flow_style = False
+ru_yaml.width = 100
 ru_yaml.indent(mapping=2, sequence=4, offset=2)
 
 
