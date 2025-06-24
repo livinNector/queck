@@ -72,7 +72,25 @@ type QueckItemType = (
     | QueckItemTypes.common_data_question
 )
 
-type QueckItem = Description | Question | CommonDataQuestion
+
+class QueckItemModel(abc.ABC, DataViewModel):
+    type: str
+    model_config = ConfigDict(extra="forbid")
+    text: MDStr
+
+    def to_md(
+        self,
+        file_name=None,
+        extension="md",
+        *,
+        format=False,
+        type_labels: dict[str, str] | None = None,
+        **kwargs,
+    ):
+        type_labels = queck_config.type_labels | (type_labels or {})
+        return super().to_md(
+            file_name, extension, format=format, type_labels=type_labels or {}, **kwargs
+        )
 
 
 class Description(QueckItemModel):
@@ -215,6 +233,8 @@ class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
 
 
 OutputFormat = Literal["queck", "html", "md", "json"]
+
+QueckItem = Description | Question | CommonDataQuestion
 
 
 class Queck(DataViewModel, QueckQuestionContainer):
