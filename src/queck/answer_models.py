@@ -405,7 +405,7 @@ class NumRange(AnswerModel[NumRangeStr]):
 
     def to_num_tolerance(self):
         low, high = self.value.low, self.value.high
-        return NumRange(f"{(high + low) / 2}|{(high - low) / 2}")
+        return NumTolerance(f"{(high + low) / 2}|{(high - low) / 2}")
 
 
 class NumToleranceParsed(PatternParsedModel, title="NumTolerance"):
