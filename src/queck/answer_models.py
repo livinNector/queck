@@ -42,7 +42,7 @@ class AnswerModel[RootT](RootModel[RootT]):
     """Wrapper for Root Model with value as alias for root and parsed serialization."""
 
     root: RootT
-    type: ClassVar
+    type: ClassVar[str]
 
     @property
     def value(self) -> RootT:
