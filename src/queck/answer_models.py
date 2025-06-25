@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import (
+    ConfigDict,
     Field,
     RootModel,
     SerializationInfo,
@@ -249,10 +250,12 @@ incorrect_choice_adapter = TypeAdapter(IncorrectChoice)
 
 
 class ChoicesBase[ItemT](AnswerModel[list[ItemT]]):
-    def __getitem__(self, item):
+    model_config = ConfigDict(revalidate_instances="always")
+
+    def __getitem__(self, item: int) -> ItemT:
         return self.root[item]
 
-    def __setitem__(self, item, value):
+    def __setitem__(self, item: int, value):
         self.root[item] = value
 
     def __iter__(self):
