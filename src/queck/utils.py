@@ -52,7 +52,7 @@ class Merger:
                     if k not in a_keys:
                         a[k] = b[k]
 
-    def merge_models(self, a: BaseModel, b: BaseModel) -> BaseModel:
+    def merge_models(self, a: BaseModel, b: BaseModel):
         """Merges two pydantic models and returns the merged model.
 
         Values in `b` overrides values in `a`.
@@ -64,21 +64,27 @@ class Merger:
 
 
 def _unwrap_union(type_var, subs=None):
+    subs = subs or {}
     if isinstance(type_var, GenericAlias):
-        subs = dict(zip(get_origin(type_var).__type_params__, get_args(type_var)))
+        subs = subs | dict(
+            zip(get_origin(type_var).__type_params__, get_args(type_var))
+        )
         return _unwrap_union(get_origin(type_var), subs)
     if isinstance(type_var, TypeAliasType):
-        if get_origin(type_var.__value__) == Union:
-            return Union[
-                tuple(
-                    _unwrap_union(inner_type, subs=subs)
-                    for inner_type in get_args(type_var.__value__)
-                )
-            ]
         return _unwrap_union(type_var.__value__, subs=subs)
+    if get_origin(type_var) == Union:
+        return Union[
+            tuple(
+                _unwrap_union(inner_type, subs=subs)
+                for inner_type in get_args(type_var)
+            )
+        ]
     if isinstance(type_var, TypeVar):
-        subs = subs or {}
-        return subs.get(type_var)
+        while True:
+            new_var = subs.get(type_var)
+            if new_var is None:
+                return type_var
+            type_var = new_var
     return type_var
 
 
