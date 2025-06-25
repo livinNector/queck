@@ -1,0 +1,92 @@
+a:
+  attr: value
+  list_attr:
+    - attr1: value 1
+      attr2: value 2
+    - value 2
+  dict_attr:
+    attr1: value 1
+    attr2: value 2
+    list_attr:
+      - value 1
+      - value 2
+b:
+  attr: value new
+  list_attr:
+    - attr1: value 1 new
+      attr2: value 2
+    - value 2
+    - value 3
+  dict_attr:
+    attr1: value 1 new
+    attr2: value 2
+    attr3: value 3
+    list_attr:
+      - value 1
+      - value 2 new
+      - value 3
+      - attr1: value 1
+        attr2: value 2
+        attr3: value 3
+result:
+  attr: value new
+  list_attr:
+    - attr1: value 1 new
+      attr2: value 2
+    - value 2
+  dict_attr:
+    attr1: value 1 new
+    attr2: value 2
+    list_attr:
+      - value 1
+      - value 2 new
+result_extend_lists:
+  attr: value new
+  list_attr:
+    - attr1: value 1 new
+      attr2: value 2
+    - value 2
+    - value 3
+  dict_attr:
+    attr1: value 1 new
+    attr2: value 2
+    list_attr:
+      - value 1
+      - value 2 new
+      - value 3
+      - attr1: value 1
+        attr2: value 2
+        attr3: value 3
+
+result_extend_dicts:
+  attr: value new
+  list_attr:
+    - attr1: value 1 new
+      attr2: value 2
+    - value 2
+  dict_attr:
+    attr1: value 1 new
+    attr2: value 2
+    attr3: value 3
+    list_attr:
+      - value 1
+      - value 2 new
+
+result_extend_both:
+  attr: value new
+  list_attr:
+    - attr1: value 1 new
+      attr2: value 2
+    - value 2
+    - value 3
+  dict_attr:
+    attr1: value 1 new
+    attr2: value 2
+    attr3: value 3
+    list_attr:
+      - value 1
+      - value 2 new
+      - value 3
+      - attr1: value 1
+        attr2: value 2
+        attr3: value 3
