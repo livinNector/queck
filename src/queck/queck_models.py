@@ -207,6 +207,8 @@ class QueckQuestionContainer[T](QuestionContainer[T], BaseModel):
             question_container = self.model_copy(deep=True)
         else:
             question_container = self
+        if not (num_type or bool_to_choice):
+            return question_container
         QueckQuestionContainer._answer_normalize(
             question_container.questions,
             num_type=num_type,
@@ -470,21 +472,22 @@ class Queck(DataViewModel, QueckQuestionContainer):
             format (OutputFormat): Output format
             render_mode : Rendering mode
             overview (bool): Whether to add overview section
-            render_json (bool): Whether to render markdown to html in json
             parsed (bool): Whether to add parsed choices
+            render_json (bool): Whether to render markdown to html in json
             kwargs : Passed to model_dump
         """
+        q = self
+
+        q = self.normalize_answers(**queck_config.normalize_config, copy=True)
         match format:
             case "queck":
-                self.to_queck(output_file)
+                q.to_queck(output_file)
             case "html":
-                self.export_html(
-                    output_file, render_mode=render_mode, overview=overview
-                )
+                q.export_html(output_file, render_mode=render_mode, overview=overview)
             case "md":
-                self.to_md(output_file, format=True, overview=overview, **kwargs)
+                q.to_md(output_file, format=True, overview=overview, **kwargs)
             case "json":
-                self.to_json(output_file, rendered=render_json, parsed=parsed, **kwargs)
+                q.to_json(output_file, rendered=render_json, parsed=parsed, **kwargs)
         print(f"Quiz successfully exported to {output_file}")
 
 

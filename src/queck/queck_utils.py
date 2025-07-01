@@ -2,15 +2,25 @@ import os
 import tomllib
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import TypedDict
 
 from pydantic import BaseModel, Field
 
+from queck.answer_models import AnswerTypes
 from queck.model_utils import DecimalNumber
 from queck.utils import Merger
 
 
+class NormalizeConfig(TypedDict):
+    bool_to_choice: bool
+    num_type: AnswerTypes.numerical_range | AnswerTypes.numerical_tolerance | None
+
+
 class QueckConfig(BaseModel):
     type_labels: dict[str, str] = Field(default_factory=dict)
+    normalize_config: NormalizeConfig = Field(
+        default_factory=lambda: NormalizeConfig(bool_to_choice=False, num_type=None)
+    )
 
 
 queck_config = QueckConfig(

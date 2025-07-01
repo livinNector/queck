@@ -52,7 +52,7 @@ class Merger:
                     if k not in a_keys:
                         a[k] = b[k]
 
-    def merge_models(self, a: BaseModel, b: BaseModel):
+    def merge_models[T: BaseModel](self, a: T, b: T) -> T:
         """Merges two pydantic models and returns the merged model.
 
         Values in `b` overrides values in `a`.
