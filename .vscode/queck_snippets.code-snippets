@@ -29,19 +29,19 @@
     "body": ["answer: ", "  ${1}"],
     "description": "Answer"
   },
-  "Short answer": {
+  "Short Answer": {
     "scope": "yaml",
     "prefix": "short-answer",
     "body": ["- text: ${1:Question goes here}", "  answer: ${2:answer}", "$0"],
     "description": "Question with integer as answer."
   },
-  "Numeric integer": {
+  "Numerical Integer": {
     "scope": "yaml",
     "prefix": "nat-int",
     "body": ["- text: ${1:Question goes here}", "  answer: ${2:0}", "$0"],
     "description": "Question with integer as answer."
   },
-  "Numeric range": {
+  "Numerical Range": {
     "scope": "yaml",
     "prefix": "nat-range",
     "body": [
@@ -51,7 +51,7 @@
     ],
     "description": "Question with numeric range as answer."
   },
-  "Numeric tolerance": {
+  "Numerical Tolerance": {
     "scope": "yaml",
     "prefix": "nat-tol",
     "body": [
@@ -71,39 +71,85 @@
     ],
     "description": "Question with true or false as answer."
   },
-  "Correct Choice": {
+  "Choice": {
     "scope": "yaml",
-    "prefix": "choice-correct",
-    "body": ["- (x) ${1:Correct Choice}"]
+    "prefix": "choice",
+    "body": ["- (${2| ,o,x|}) ${1:Choice text}", "$0"]
   },
-  "Correct Choice - Multiline": {
+  "Choice - Multiline": {
     "scope": "yaml",
-    "prefix": "choice-correct-multiline",
-    "body": ["- |", "  (x) ${1:Correct Choice}"]
+    "prefix": "choice-multiline",
+    "body": ["- |", "  (${2| ,o,x|}) ${1:Choice text}", "$0"]
   },
-  "Correct Choice with feedback": {
+  "Choice - Code block": {
     "scope": "yaml",
-    "prefix": "choice-correct-feedback",
-    "body": ["- (x) ${1:Correct Choice} // ${2:Optional Feedback}"]
+    "prefix": "choice-code-block",
+    "body": [
+      "- |",
+      "  (${3| ,o,x|}) ```${1|python,c,c++,java,js,text|}",
+      "  ${2:# Code goes here}",
+      "  ```",
+      "$0"
+    ]
   },
-  "Incorrect Choice": {
+  "Choice - Math block": {
     "scope": "yaml",
-    "prefix": "choice-incorrect",
-    "body": ["- ( ) ${1:Incorrect Choice}"]
+    "prefix": "choice-math-block",
+    "body": [
+      "- |",
+      "  (${2| ,o,x|}) $$",
+      "  ${1:# Code goes here}",
+      "  $$",
+      "$0"
+    ]
   },
-  "Incorrect Choice - Multiline": {
+  "Choice with feedback": {
     "scope": "yaml",
-    "prefix": "choice-incorrect-multiline",
-    "body": ["- |", "  ( ) ${1:Incorrect Choice}"]
+    "prefix": "choice-feedback",
+    "body": ["- (${3| ,o,x|}) ${1:Choice text} /# ${2:Optional Feedback}", "$0"]
   },
-  "Incorrect Choice with feedback": {
+  "Choice with feedback - Multiline": {
     "scope": "yaml",
-    "prefix": "choice-incorrect-feedback",
-    "body": ["- ( ) ${1:Incorrect Choice} // ${2:Optional Feedback}"]
+    "prefix": "choice-feedback-multiline",
+    "body": [
+      "- |",
+      "  (${3| ,o,x|}) ${1:Choice text}",
+      "  /# ${2:Optional Feedback}",
+      "$0"
+    ]
+  },
+
+  "Single Select Question": {
+    "scope": "yaml",
+    "prefix": "ssq",
+    "body": [
+      "- text: ${1:Question goes here}",
+      "  answer:",
+      "    - (o) ${2:Correct Choice}",
+      "    - ( ) ${3:Incorrect Choice}",
+      "    - ( ) ${4:Incorrect Choice}",
+      "    - ( ) ${5:Incorrect Choice}",
+      "$0"
+    ],
+    "description": "Question with number with single selectable choice as answer."
   },
   "Multiple Choice Question": {
     "scope": "yaml",
     "prefix": "mcq",
+    "body": [
+      "- text: ${1:Question goes here}",
+      "  answer:",
+      "    - (o) ${2:Correct Choice}",
+      "    - ( ) ${3:Incorrect Choice}",
+      "    - ( ) ${4:Incorrect Choice}",
+      "    - ( ) ${5:Incorrect Choice}",
+      "$0"
+    ],
+    "description": "Alias for Single Select Question."
+  },
+  "Multiple Select Question": {
+    "scope": "yaml",
+    "prefix": "msq",
     "body": [
       "- text: ${1:Question goes here}",
       "  answer:",
@@ -113,11 +159,11 @@
       "    - ( ) ${5:Incorrect Choice}",
       "$0"
     ],
-    "description": "Question with number with multiple choice answer."
+    "description": "Question with number with multiple selectable choices with one correct choice."
   },
-  "Multiple Choice Question - Two correct": {
+  "Multiple Select Question - Two correct": {
     "scope": "yaml",
-    "prefix": "mcq-2",
+    "prefix": "msq-2",
     "body": [
       "- text: ${1:Question goes here}",
       "  answer:",
@@ -127,11 +173,11 @@
       "    - ( ) ${5:Incorrect Choice}",
       "$0"
     ],
-    "description": "Question with number with multiple choice answer with two correct options"
+    "description": "Question with number with multiple selectable choices with two correct choices."
   },
-  "Multiple Choice Question - Three correct": {
+  "Multiple Select Question - Three correct": {
     "scope": "yaml",
-    "prefix": "mcq-3",
+    "prefix": "msq-3",
     "body": [
       "- text: ${1:Question goes here}",
       "  answer:",
@@ -141,7 +187,7 @@
       "    - ( ) ${5:Incorrect Choice}",
       "$0"
     ],
-    "description": "Question with number with multiple choice answer with three correct options"
+    "description": "Question with number with multiple selectable choices with three correct choices."
   },
   "Common Data Question": {
     "scope": "yaml",
@@ -152,9 +198,11 @@
       "  questions:",
       "    - text: ${2:Question goes here}",
       "      answer: $3",
+      "    - text: ${4:Question goes here}",
+      "      answer: $5",
       "    $0"
     ],
-    "description": "Question with number with multiple choice answer with three correct options"
+    "description": "Common data based questions"
   },
   "Hint": {
     "scope": "yaml",

@@ -3,17 +3,19 @@
         {
             "fileMatch": [
                 "*.queck.json",
+                "*.qk.json",
             ],
             "url": "./schema/queck_schema.json"
         }
     ],
     "yaml.schemas": {
         "./schema/queck_schema.json": [
-            "*.queck.yaml",
-            "*.queck"
+            "*.queck",
+            "*.qk"
         ]
     },
     "files.associations": {
-        "*.queck": "yaml"
+        "*.queck": "yaml",
+        "*.qk": "yaml"
     }
 }
