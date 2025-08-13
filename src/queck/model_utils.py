@@ -24,6 +24,7 @@ from pydantic import (
     TypeAdapter,
     ValidationError,
     ValidationInfo,
+    WithJsonSchema,
     model_serializer,
     model_validator,
 )
@@ -105,7 +106,8 @@ def _md_str_serializer(value: str, info: SerializationInfo):
         if info.context.get("rendered", False):
             renderer: MarkdownIt = info.context.get("renderer", mdit_renderers["base"])
             env = info.context.get("render_env")
-            return renderer.render(value, env)
+            result = renderer.render(value, env=env)
+            return result
         elif info.context.get("format_md", False):
             return md_format(value)
     return value
@@ -146,7 +148,7 @@ DecimalNumber = Annotated[
     Decimal,
     AfterValidator(non_exponent_normalize),
     PlainSerializer(dec_to_num, return_type=int | float),
-    WithJsonSchema({'type':'number'})
+    WithJsonSchema({"type": "number"}),
 ]
 
 DecimalNumberAdapter = TypeAdapter(DecimalNumber)
