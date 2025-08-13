@@ -197,18 +197,29 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
     def parsed(self) -> T:
         return self._parsed
 
-    @model_validator(mode="after")
-    def cache_parsed(self, info: ValidationInfo):
-        match = re.match(self.pattern, self.root)
-        if match is None:
-            raise ValidationError("Does not match the pattern.")
-        self._parsed = self.parsed_type.model_validate(
-            match.groupdict()
-            | {attr: getattr(self, attr) for attr in self.parsed_extra},
-            context=info.context,
-        )
-        self.root = self.parsed.formatted
-        return self
+    @model_validator(mode="wrap")
+    @classmethod
+    def cache_parsed(cls, value, handler, info: ValidationInfo):
+
+        if info.context is not None and info.context.get('from_parsed'):
+            parsed = cls.parsed_type.model_validate(
+                value,
+                context=info.context,
+            )
+            value= handler(parsed.formatted)
+            value._parsed = parsed
+        else:
+            value = handler(value)
+            match = re.match(cls.pattern, value.root)
+            if match is None:
+                raise ValidationError("Does not match the pattern.")
+            value._parsed = cls.parsed_type.model_validate(
+                match.groupdict()
+                | {attr: getattr(value, attr) for attr in value.parsed_extra},
+                context=info.context,
+            )
+            value.root = value.parsed.formatted
+        return value
 
     @model_serializer(mode="plain")
     def ser_parsed(self, info: SerializationInfo) -> str | dict:
