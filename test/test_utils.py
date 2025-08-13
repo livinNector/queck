@@ -4,12 +4,12 @@ from pathlib import Path
 from typing import Literal
 
 import pytest
-import yaml
 
 from queck.utils import Merger, get_literal_union_args, safe_write_file, write_file
 
-FIXTURE_ROOT = Path(__file__).parent
-merger_test_case = yaml.safe_load((FIXTURE_ROOT / "merger_fixture.yaml").read_text())
+from .common import load_fixture
+
+merger_test_case = load_fixture("merger_fixture.yaml")
 
 
 def get_literal_union_test_cases():

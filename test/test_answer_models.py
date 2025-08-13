@@ -1,19 +1,15 @@
-from pathlib import Path
-
 import pytest
-import yaml
 from pydantic import BaseModel, ValidationError
 
 import queck as qk
 
-FIXTURE_ROOT = Path(__file__).parent
-answer_fixtures = yaml.safe_load((FIXTURE_ROOT / "answer_fixtures.yaml").read_text())
-answer_conversion_fixtures = yaml.safe_load(
-    (FIXTURE_ROOT / "answer_conversion_fixtures.yaml").read_text()
-)
+from .common import load_fixture
 
-answer_attr_check_fixtures = yaml.safe_load(
-    (FIXTURE_ROOT / "answer_attr_check_fixtures.yaml").read_text()
+answer_fixtures = load_fixture("answer_fixtures.yaml")
+answer_conversion_fixtures = load_fixture("answer_conversion_fixtures.yaml")
+answer_attr_check_fixtures = load_fixture("answer_attr_check_fixtures.yaml")
+answer_parsed_validation_fixtures = load_fixture(
+    "answer_parsed_validation_fixtures.yaml"
 )
 
 
@@ -24,8 +20,12 @@ def test_answers(test_item):
     model: BaseModel = getattr(qk.answer_models, test_item["model"])
     answer_constructed = model(root=test_item["item"])
     answer_validated = model.model_validate(test_item["item"])
+    answer_parsed_validated = model.model_validate(
+        test_item["parsed"], context={"from_parsed": True}
+    )
 
     assert answer_constructed == answer_validated
+    assert answer_parsed_validated == answer_validated
     parsed_dict = answer_constructed.model_dump(context={"parsed": True})
     assert test_item["parsed"] == parsed_dict
     formatted = test_item.get("formatted")
@@ -62,6 +62,21 @@ def test_attrs(test_item):
 
     for attr in test_item["attrs"]:
         assert getattr(item, attr["name"]) == attr["value"]
+
+
+# @pytest.mark.parametrize(
+#     "test_item",
+#     answer_parsed_validation_fixtures,
+#     ids=[f["title"] for f in answer_parsed_validation_fixtures],
+# )
+# def test_parsed_validation(test_item):
+#     model: BaseModel = getattr(qk.answer_models, test_item["model"])
+
+#     formatted = model.model_validate(test_item["formatted"])
+#     formatted = model.model_validate(test_item["formatted"])
+
+#     for attr in test_item["attrs"]:
+#         assert getattr(item, attr["name"]) == attr["value"]
 
 
 def test_dunder_methods():

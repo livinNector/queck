@@ -1,0 +1,86 @@
+- title: Question
+  model: Question
+  item:
+    text: What is 2 + 2?
+    answer: 4
+    feedback: Correct answer is 4.
+    marks: 1
+    tags: [math, easy]
+  yaml: |+
+    type: question
+    text: What is 2 + 2?
+    answer: 4
+    feedback: Correct answer is 4.
+    marks: 1
+    tags:
+      - math
+      - easy
+  md: |+
+    ## [Numerical] (1 mark)
+
+    ***Tags:*** `math`, `easy`
+
+    What is 2 + 2?  
+
+    **Answer:** $4$
+
+    **Feedback**  
+    Correct answer is 4.
+  parsed:
+    type: question
+    text: What is 2 + 2?
+    answer:
+      value: 4
+      type: numerical_integer
+    feedback: Correct answer is 4.
+    marks: 1
+    tags: [math, easy]
+  parsed_rendered:
+    type: question
+    text: "<p>What is 2 + 2?</p>\n"
+    answer:
+      value: 4
+      type: numerical_integer
+    feedback: "<p>Correct answer is 4.</p>\n"
+    marks: 1
+    tags: [math, easy]
+  rendered:
+    type: question
+    text: "<p>What is 2 + 2?</p>\n"
+    answer: 4
+    feedback: "<p>Correct answer is 4.</p>\n"
+    marks: 1
+    tags: [math, easy]
+# - title: Common Data Question
+#   model: CommonDataQuestion
+#   item:
+#     text: Shared context for questions.
+#     questions:
+#       - text: Question 1
+#         answer: 5
+#         marks: 2
+#       - text: Question 2
+#         answer: Answer
+#         marks: 3
+
+- title: Description
+  model: Description
+  item:
+    text: A Sample Description
+  parsed:
+    type: description
+    text: A Sample Description
+  yaml: |+
+    type: description
+    text: A Sample Description
+  md: |+
+    ## [Description]
+
+    A Sample Description  
+
+  rendered:
+    type: description
+    text: "<p>A Sample Description</p>\n"
+  parsed_rendered:
+    type: description
+    text: "<p>A Sample Description</p>\n"
