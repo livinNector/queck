@@ -146,6 +146,7 @@ DecimalNumber = Annotated[
     Decimal,
     AfterValidator(non_exponent_normalize),
     PlainSerializer(dec_to_num, return_type=int | float),
+    WithJsonSchema({'type':'number'})
 ]
 
 DecimalNumberAdapter = TypeAdapter(DecimalNumber)
