@@ -1,5 +1,6 @@
 import abc
 import io
+import json
 import re
 from decimal import Decimal
 from typing import (
@@ -202,13 +203,12 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
     @model_validator(mode="wrap")
     @classmethod
     def cache_parsed(cls, value, handler, info: ValidationInfo):
-
-        if info.context is not None and info.context.get('from_parsed'):
+        if info.context is not None and info.context.get("from_parsed"):
             parsed = cls.parsed_type.model_validate(
                 value,
                 context=info.context,
             )
-            value= handler(parsed.formatted)
+            value = handler(parsed.formatted)
             value._parsed = parsed
         else:
             value = handler(value)
@@ -255,24 +255,66 @@ class DataViewModel(BaseModel):
         cls.mdit_renderer = mdit_renderers["base"]
 
     @classmethod
-    def from_yaml(cls, yaml_str: str, format_md: bool = False, round_trip=False):
+    def from_python(cls, content, format_md=False, context: dict | None = None):
+        """Loads from python object."""
+        context = context or {}
+        return cls.model_validate(content, context={"format_md": format_md} | context)
+
+    @classmethod
+    def from_yaml(
+        cls,
+        yaml_str: str,
+        format_md: bool = False,
+        round_trip=False,
+        context: dict | None = None,
+    ):
         if round_trip:
             yaml_content = ru_yaml.load(yaml_str)
         else:
             yaml_content = yaml.safe_load(yaml_str)
-        result = cls.model_validate(yaml_content, context={"format_md": format_md})
+        result = cls.from_python(yaml_content, format_md=format_md, context=context)
         if round_trip:
             result._yaml_content = yaml_content
         return result
 
     @classmethod
-    def read_yaml(cls, yaml_file, format_md: bool = False, round_trip=False):
+    def read_yaml(
+        cls,
+        yaml_file,
+        format_md: bool = False,
+        round_trip=False,
+        context: dict | None = None,
+    ):
         with open(yaml_file, "r") as f:
-            return cls.from_yaml(f.read(), format_md=format_md, round_trip=round_trip)
+            return cls.from_yaml(
+                f.read(), format_md=format_md, round_trip=round_trip, context=context
+            )
+
+    @classmethod
+    def from_json(
+        cls,
+        json_str: str,
+        format_md: bool = False,
+        context: dict | None = None,
+    ):
+        return cls.from_python(
+            json.loads(json_str), format_md=format_md, context=context
+        )
+
+    @classmethod
+    def read_json(
+        cls,
+        json_file,
+        format_md: bool = False,
+        context: dict | None = None,
+    ):
+        with open(json_file) as f:
+            content = json.load(f)
+        return cls.from_python(content, format_md=format_md, context=context)
 
     to_file_or_str = staticmethod(to_file_or_str)
 
-    def to_dict(
+    def to_python(
         self,
         *,
         parsed: bool = False,
@@ -280,10 +322,10 @@ class DataViewModel(BaseModel):
         format_md: bool = False,
         renderer: MarkdownIt | None = None,
         render_env: dict | None = None,
+        context: dict | None = None,
         **kwargs,
     ):
-        # for adding additional context
-        kwarg_context = kwargs.pop("context", {})
+        context = context or {}
         return self.model_dump(
             context={
                 "parsed": parsed,
@@ -292,7 +334,7 @@ class DataViewModel(BaseModel):
                 "format_md": format_md,
                 "render_env": render_env,
             }
-            | kwarg_context,
+            | context,
             **kwargs,
         )
 
@@ -301,16 +343,16 @@ class DataViewModel(BaseModel):
         file_name: str | None = None,
         extension="json",
         *,
+        indent: int | None = 2,
         parsed: bool = False,
         rendered: bool = False,
         format_md: bool = False,
         renderer: MarkdownIt | None = None,
         render_env: dict | None = None,
+        context: dict | None = None,
         **kwargs,
     ):
-        # for adding additional context
-        kwarg_context = kwargs.pop("context", {})
-        indent = kwargs.pop("indent", 2)
+        context = context or {}
         return self.to_file_or_str(
             self.model_dump_json(
                 indent=indent,
@@ -321,7 +363,7 @@ class DataViewModel(BaseModel):
                     "format_md": format_md,
                     "render_env": render_env,
                 }
-                | kwarg_context,
+                | context,
                 **kwargs,
             ),
             file_name=file_name,
@@ -340,7 +382,7 @@ class DataViewModel(BaseModel):
         render_env: dict | None = None,
         **kwargs,
     ):
-        result = self.to_dict(
+        result = self.to_python(
             parsed=parsed,
             rendered=rendered,
             format_md=format_md,
