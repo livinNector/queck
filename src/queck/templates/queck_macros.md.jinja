@@ -1,8 +1,8 @@
 {%from './overview.md.jinja' import render_overview-%}
 {% macro render_question(question,type_labels, index=none, level=1,for_html_export=false) %}
 {%- set type = question.answer.type if question.type =='question' else question.type%}
-{{-'<div class="no-break">\n' if for_html_export else ''}}
-{{"#"*level}}{%if index%} Question {{ index }}{%endif%} [{{ type_labels.get(type, None) }}]{%if question.marks %} ({{question.marks}} marks){%endif%}
+{{-'<div class="no-break">\n\n' if for_html_export else ''-}}
+{{"#"*level}}{%if index%} Question {{ index }}{%endif%} [{{ type_labels.get(type, None) }}]{%if question.marks %} ({{question.marks}} mark{{"s" if question.marks>1 else ""}}){%endif%}
 
 {%if question.tags-%}
 ***Tags:*** {% set comma = joiner(", ") -%}{%for tag in question.tags%}{{comma()}}`{{tag}}`{%endfor %}
@@ -29,7 +29,6 @@
 {%- elif answer.type in ["short_answer","true_or_false"] %}
 **Answer:** {{ answer.value }}
 {%- endif %}
-{{'\n\n</div>\n\n' if for_html_export else ''-}}
 {%if question.feedback %}
 {{'<div class="no-break">\n' if for_html_export else ''-}}
 **Feedback**  
@@ -42,7 +41,7 @@
 {%- macro render_common_data_question(question, type_labels,index=none, level=1, for_html_export=false)%}
 {{-'\n<div class="no-break">\n\n' if for_html_export else ''}}
 
-{{"#" * level}} {%if index%}Question {{index}} {%endif%}[{{type_labels.get(question.type,None)}}]{%if question.marks %} ({{question.marks}} marks){%endif%}
+{{"#" * level}} {%if index%}Question {{index}} {%endif%}[{{type_labels.get(question.type,None)}}]{%if question.marks %} ({{question.marks}} mark{{"s" if question.marks>1 else ""}}){%endif%}
 
 {{"#" * (level+1)}} Common data{%if index%} for {{index}}.1 to {{index}}.{{question.questions |length}}{%endif%}
 
