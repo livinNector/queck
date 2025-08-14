@@ -64,9 +64,7 @@ class AnswerModel[RootT](RootModel[RootT]):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_parsed(
-        cls, value, info: SerializationInfo
-    ) -> RootT | AnswerData[RootT]:
+    def validate_parsed(cls, value, info: ValidationInfo):
         context = info.context
         if context is not None and context.get("from_parsed", False):
             return value["value"]  # type is ignored as type is inferable from the value
