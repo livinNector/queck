@@ -189,7 +189,15 @@ class PatternParsedModel(BaseModel):
 
 
 class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
-    """Base class for regex parseable strings with named capture groups."""
+    """Base class for regex parseable strings with named capture groups.
+
+    Attributes:
+        pattern: The regex pattern to parse the string.
+        parsed_type: The pydantic model to parse the captured groups into.
+        parsed_extra: A list of attribute names from the `PatternString` instance
+            that should be passed to the `parsed_type` model during validation.
+            This is useful for passing context from the parent model to the parsed model.
+    """
 
     pattern: ClassVar[str]
     parsed_type: ClassVar  # used when serialzed in parsed mode.
@@ -214,7 +222,7 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
             value = handler(value)
             match = re.match(cls.pattern, value.root)
             if match is None:
-                raise ValidationError("Does not match the pattern.")
+                raise ValueError(f"Does not match the pattern '{cls.pattern}'")
             value._parsed = cls.parsed_type.model_validate(
                 match.groupdict()
                 | {attr: getattr(value, attr) for attr in value.parsed_extra},
@@ -225,11 +233,28 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
 
     @model_serializer(mode="plain")
     def ser_parsed(self, info: SerializationInfo) -> str | dict:
-        parsed_kwargs = dict(info.__dict__)  # Slightly hacky
-        parsed_kwargs["context"] = context = info.context or {}
+        """Serialize the parsed model.
+
+        This serializer passes the serialization options from the parent model
+        to the parsed model.
+        """
+        dump_kwargs = {
+            "mode": info.mode,
+            "include": info.include,
+            "exclude": info.exclude,
+            "by_alias": info.by_alias,
+            "exclude_unset": info.exclude_unset,
+            "exclude_defaults": info.exclude_defaults,
+            "exclude_none": info.exclude_none,
+            "round_trip": info.round_trip,
+            "serialize_as_any": info.serialize_as_any,
+        }
+        context = info.context or {}
         parsed = context.get("parsed", False)
-        parsed_kwargs["context"] |= {"formatted": not parsed}
-        return self.parsed.model_dump(**parsed_kwargs)
+        inner_context = context.copy()
+        inner_context["formatted"] = not parsed
+        dump_kwargs["context"] = inner_context
+        return self.parsed.model_dump(**dump_kwargs)
 
     @staticmethod
     def parsed_property(name):
