@@ -103,8 +103,8 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
 
 
 def _md_str_renderer(value: str, info: SerializationInfo | ValidationInfo):
-    if info.context and (renderer := info.context.get("renderer")):
-        env = info.context.get("render_env")
+    if (context := info.context) and (renderer := context.info.get("md_renderer")):
+        env = context.get("md_render_env")
         result = renderer.render(value, env=env)
         return result
     return value
@@ -114,6 +114,7 @@ MDStr = Annotated[
     str,
     AfterValidator(_md_str_renderer),
     PlainSerializer(_md_str_renderer),
+    Field(description="Markdown text field."),
 ]
 
 MDStrAdapter = TypeAdapter(MDStr)
@@ -157,6 +158,8 @@ def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
 
 
 class PatternParsedModel(BaseModel):
+    """Base model to be used for parsed models."""
+
     format: ClassVar[str]
 
     @property
@@ -190,7 +193,7 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
     """
 
     pattern: ClassVar[str]
-    parsed_type: ClassVar  # used when serialzed in parsed mode.
+    parsed_type: ClassVar[type[T]]  # used when serialzed in parsed mode.
     _parsed: T  # used when serialzed in parsed mode.
     parsed_extra: ClassVar[list] = []  # additional attributes passed to parsed type
 
@@ -202,11 +205,11 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
     @classmethod
     def cache_parsed(cls, value, handler, info: ValidationInfo):
         if info.context is not None and info.context.get("from_parsed"):
-            parsed = cls.parsed_type.model_validate(
+            parsed: PatternParsedModel = cls.parsed_type.model_validate(
                 value,
                 context=info.context,
             )
-            value = handler(parsed.formatted)
+            value: Self = handler(parsed.formatted)
             value._parsed = parsed
         else:
             value = handler(value)
