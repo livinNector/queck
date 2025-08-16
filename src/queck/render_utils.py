@@ -83,7 +83,7 @@ BASE_CSS = files(templates).joinpath("base.css").read_text()
 
 DEFAULT_CSS = files(templates).joinpath("default.css").read_text()
 
-MDIT_HTML_RENDERERS: dict[str, MarkdownIt] = {
+MDIT_HTML_RENDERERS: dict[Literal["base", "inline"], MarkdownIt] = {
     "base": get_base_mdit("html"),
     "inline": (
         get_base_mdit("html")
@@ -92,7 +92,7 @@ MDIT_HTML_RENDERERS: dict[str, MarkdownIt] = {
     ),
 }
 
-MDIT_MD_RENDERERS: dict[str, MarkdownIt] = {
+MDIT_MD_RENDERERS: dict[Literal["base", "standalone"], MarkdownIt] = {
     "base": get_base_mdit("md"),
     "standalone": (get_base_mdit("md").use(image_embed_plugin)),
 }
@@ -142,7 +142,7 @@ _HTML_EXPORT_INILNE_ENV = (
     .env
 )
 
-HTML_EXPORT_TEMPLATES: dict[str, Template] = {
+HTML_EXPORT_TEMPLATES: dict[Literal["fast", "latex", "inline"], Template] = {
     "fast": _HTML_EXPORT_BASE_ENV.get_template("export_templates/fast.html.jinja"),
     "latex": _HTML_EXPORT_BASE_ENV.get_template("export_templates/latex.html.jinja"),
     "inline": _HTML_EXPORT_INILNE_ENV.get_template(
