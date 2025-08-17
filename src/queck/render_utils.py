@@ -92,9 +92,9 @@ MDIT_HTML_RENDERERS: dict[Literal["base", "inline"], MarkdownIt] = {
     ),
 }
 
-MDIT_MD_RENDERERS: dict[Literal["base", "standalone"], MarkdownIt] = {
+MDIT_MD_RENDERERS: dict[Literal["base", "embedded"], MarkdownIt] = {
     "base": get_base_mdit("md"),
-    "standalone": (get_base_mdit("md").use(image_embed_plugin)),
+    "embedded": (get_base_mdit("md").use(image_embed_plugin)),
 }
 
 
