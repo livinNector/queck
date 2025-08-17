@@ -1,13 +1,12 @@
 import re
 from dataclasses import dataclass
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import (
     ConfigDict,
     Field,
     RootModel,
     SerializationInfo,
-    SerializerFunctionWrapHandler,
     TypeAdapter,
     ValidationInfo,
     model_serializer,
@@ -125,21 +124,8 @@ class Choice(PatternParsedModel):
             return "x"
         return "o"
 
-    @property
-    def formatted(self) -> str:
-        return format_choice(self.mark, self.text, self.feedback)
-
-    @model_serializer(mode="wrap")
-    def ser_formatted(
-        self,
-        handler: SerializerFunctionWrapHandler,
-        info: SerializationInfo,
-    ) -> str | dict[str, Any]:
-        context = info.context
-        if context is not None and context.get("formatted", False):
-            result = handler(self)
-            return format_choice(self.mark, result["text"], result.get("feedback"))
-        return handler(self)
+    def format_value(self, value):
+        return format_choice(self.mark, value["text"], value.get("feedback"))
 
 
 class ChoiceBase(PatternString[Choice]):
