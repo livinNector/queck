@@ -23,7 +23,6 @@ from pydantic import (
     SerializationInfo,
     SerializerFunctionWrapHandler,
     TypeAdapter,
-    ValidationError,
     ValidationInfo,
     WithJsonSchema,
     model_serializer,
@@ -103,9 +102,8 @@ class NoDefaultJsonSchema(GenerateJsonSchema):
 
 
 def _md_str_renderer(value: str, info: SerializationInfo | ValidationInfo):
-    if (context := info.context) and (renderer := context.info.get("md_renderer")):
-        env = context.get("md_render_env")
-        result = renderer.render(value, env=env)
+    if (context := info.context) and (renderer := context.get("md_renderer")):
+        result = renderer.render(value, env=context.get("md_render_env"))
         return result
     return value
 
@@ -158,16 +156,24 @@ def PatternField(*args, pattern=None, **kwargs):  # noqa: N802
 
 
 class PatternParsedModel(BaseModel):
-    """Base model to be used for parsed models."""
+    """Base model to be used for parsed models.
 
+    Child models of this class can implement `format_value` method,
+    which takes in the dumped value and returns the formatted string.
+    By default uses the format class variable and passes the value as kwargs.
+
+    Child models can also include a model_validator for validating the parsed value.
+    """
     format: ClassVar[str]
 
-    @property
-    def formatted(self) -> str:
-        value = self.model_dump()
+    def format_value(self, value):
         if isinstance(value, dict):
             return self.format.format(**value)
         return value
+
+    @property
+    def formatted(self) -> str:
+        return self.format_value(self.model_dump())
 
     @model_serializer(mode="wrap")
     def ser_formatted(
@@ -177,19 +183,26 @@ class PatternParsedModel(BaseModel):
     ) -> str | dict[str, Any]:
         context = info.context
         if context is not None and context.get("formatted", False):
-            return self.format.format(**handler(self))
+            return self.format_value(handler(self))
         return handler(self)
 
 
 class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
-    """Base class for regex parseable strings with named capture groups.
+    r"""Base class for regex parseable strings with named capture groups.
+
+    Eg. The pattern for the key value pair separated by colon is
+    r'\s*(?P<key>)\s*:\s*(?P<value>)\s*'
+
+    The `preprocess_groups` method can be implemented to process the capture
+    groups to produce the final attributes to be passed to the parsed model.
 
     Attributes:
         pattern: The regex pattern to parse the string.
         parsed_type: The pydantic model to parse the captured groups into.
-        parsed_extra: A list of attribute names from the `PatternString` instance
-            that should be passed to the `parsed_type` model during validation.
-            This is useful for passing context from the parent model to the parsed model.
+        parsed_extra: A list of additional attribute names from the
+            `PatternString` instance that should be passed to the
+            `parsed_type` model during validation. This is useful for passing properties
+            or class attributes from  `PatternString` model to the parsed model.
     """
 
     pattern: ClassVar[str]
@@ -200,6 +213,10 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
     @property
     def parsed(self) -> T:
         return self._parsed
+
+    @classmethod
+    def preprocess_groups(cls, groups):
+        return groups
 
     @model_validator(mode="wrap")
     @classmethod
@@ -217,7 +234,7 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
             if match is None:
                 raise ValueError(f"Does not match the pattern '{cls.pattern}'")
             value._parsed = cls.parsed_type.model_validate(
-                match.groupdict()
+                cls.preprocess_groups(match.groupdict())
                 | {attr: getattr(value, attr) for attr in value.parsed_extra},
                 context=info.context,
             )
