@@ -1,12 +1,15 @@
 import abc
 import io
-import json
+import os
 import re
 from decimal import Decimal
+from pathlib import Path
 from typing import (
     Annotated,
     Any,
     ClassVar,
+    Literal,
+    Self,
 )
 
 import yaml
@@ -31,7 +34,7 @@ from pydantic import (
 from pydantic.json_schema import GenerateJsonSchema
 from ruamel.yaml import YAML
 
-from .render_utils import md_format, mdit_renderers
+from .render_utils import MDIT_HTML_RENDERERS, MDIT_MD_RENDERERS
 from .utils import Merger, write_file
 
 ru_yaml = YAML(typ="rt", plug_ins=[])
@@ -164,6 +167,7 @@ class PatternParsedModel(BaseModel):
 
     Child models can also include a model_validator for validating the parsed value.
     """
+
     format: ClassVar[str]
 
     def format_value(self, value):
@@ -183,7 +187,11 @@ class PatternParsedModel(BaseModel):
     ) -> str | dict[str, Any]:
         context = info.context
         if context is not None and context.get("formatted", False):
-            return self.format_value(handler(self))
+            return self.format_value(
+                handler(
+                    self,
+                )
+            )
         return handler(self)
 
 
@@ -195,6 +203,9 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
 
     The `preprocess_groups` method can be implemented to process the capture
     groups to produce the final attributes to be passed to the parsed model.
+
+    Attributes from the parsed model can be added to PatternString using
+    `PatternString.parsed_property`.
 
     Attributes:
         pattern: The regex pattern to parse the string.
@@ -268,6 +279,7 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
 
     @staticmethod
     def parsed_property(name):
+        """Helper method to add an attribute from the parsed model."""
         return property(
             lambda self: getattr(self.parsed, name),
             lambda self, v: setattr(self.parsed, name, v),
@@ -275,39 +287,122 @@ class PatternString[T: PatternParsedModel](abc.ABC, RootModel[str]):
 
 
 class DataViewModel(BaseModel):
+    """Base class for a pydantic model with markdown renderable view.
+
+    Also has support for PatternString and MDStr type fields.
+    """
+
     _yaml_content: Any | None = PrivateAttr(None)  # Only used for round trip parsing.
-    view_template: ClassVar[Template]
-    mdit_renderer: ClassVar[MarkdownIt] = mdit_renderers["base"]
+    _filename: Path | None = PrivateAttr(None)  # to be used while loaded from a file
+    view_template: ClassVar[Template]  # a markdown view template for the pydantic model
+    md_renderer: ClassVar[MarkdownIt] = MDIT_HTML_RENDERERS["base"]
+    md_formatter: ClassVar[MarkdownIt] = MDIT_MD_RENDERERS["base"]
 
     @classmethod
-    def use_mdit(cls, mdit: MarkdownIt):
-        """Sets the shared MarkdownIt renderer."""
-        cls.mdit_renderer = mdit
+    def use_mdit(
+        cls,
+        md_renderer: MarkdownIt | None = None,
+        md_formatter: MarkdownIt | None = None,
+    ):
+        """Sets the shared MarkdownIt instances for rendering and formatting."""
+        cls.md_renderer = md_renderer or cls.md_renderer
+        cls.md_formatter = md_formatter or cls.md_formatter
 
     @classmethod
     def reset_mdit(cls):
         """Resets the shared MarkdownIt renderer to the base renderer."""
-        cls.mdit_renderer = mdit_renderers["base"]
+        cls.use_mdit(
+            md_renderer=MDIT_HTML_RENDERERS["base"],
+            md_formatter=MDIT_MD_RENDERERS["base"],
+        )
 
     @classmethod
-    def from_python(cls, content, format_md=False, context: dict | None = None):
-        """Loads from python object."""
-        context = context or {}
-        return cls.model_validate(content, context={"format_md": format_md} | context)
+    def get_validation_context(
+        cls,
+        from_parsed: bool | None = False,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
+        context: dict | None = None,
+    ):
+        return (
+            (
+                {
+                    "md_renderer": md_formatter or cls.md_formatter,
+                    "md_render_env": env,
+                }
+                if format_md
+                else {}
+            )
+            | {"from_parsed": from_parsed}
+            | (context or {})
+        )
+
+    @classmethod
+    def from_python(
+        cls,
+        obj,
+        from_parsed: bool | None = False,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
+        context: dict | None = None,
+    ):
+        """Loads the model from python object.
+
+        Arguments:
+            obj : The python object.
+            from_parsed (bool|None): Whether to validate from parsed model.
+            format_md (bool|None): Whether to format MDstr fields during validation.
+            md_formatter (MarkdownIt|None): Markdown formatter to use.
+            env (dict|None): Env to be passed to the formatters `render` method.
+            context (dict|None): Additional context to be passed to the model_validate.
+        """
+        return cls.model_validate(
+            obj,
+            context=cls.get_validation_context(
+                from_parsed=from_parsed,
+                format_md=format_md,
+                md_formatter=md_formatter,
+                env=env,
+                context=context,
+            ),
+        )
 
     @classmethod
     def from_yaml(
         cls,
         yaml_str: str,
-        format_md: bool = False,
         round_trip=False,
+        from_parsed: bool | None = False,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
         context: dict | None = None,
     ):
+        """Loads the model from yaml string.
+
+        Arguments:
+            yaml_str (str): The yaml string.
+            round_trip (bool|None): Whether to do round trip parsing using ruamel.
+            from_parsed (bool|None): Whether to validate from parsed model.
+            format_md (bool|None): Whether to format MDstr fields during validation.
+            md_formatter (MarkdownIt|None): Markdown formatter to use.
+            env (dict|None): Env to be passed to the formatters `render` method.
+            context (dict|None): Additional context to be passed to the model_validate.
+        """
         if round_trip:
             yaml_content = ru_yaml.load(yaml_str)
         else:
             yaml_content = yaml.safe_load(yaml_str)
-        result = cls.from_python(yaml_content, format_md=format_md, context=context)
+        result = cls.from_python(
+            yaml_content,
+            from_parsed=from_parsed,
+            format_md=format_md,
+            md_formatter=md_formatter,
+            env=env,
+            context=context,
+        )
         if round_trip:
             result._yaml_content = yaml_content
         return result
@@ -315,61 +410,154 @@ class DataViewModel(BaseModel):
     @classmethod
     def read_yaml(
         cls,
-        yaml_file,
-        format_md: bool = False,
+        yaml_file: os.PathLike,
+        from_parsed: bool | None = False,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
         round_trip=False,
         context: dict | None = None,
     ):
+        """Loads the model from yaml file.
+
+        Arguments:
+            yaml_file (PathLike): The yaml file.
+            round_trip (bool|None): Whether to do round trip parsing using ruamel.
+            from_parsed (bool|None): Whether to validate from parsed model.
+            format_md (bool|None): Whether to format MDstr fields during validation.
+            md_formatter (MarkdownIt|None): Markdown formatter to use.
+            env (dict|None): Env to be passed to the formatters `render` method.
+            context (dict|None): Additional context to be passed to the model_validate.
+        """
         with open(yaml_file, "r") as f:
-            return cls.from_yaml(
-                f.read(), format_md=format_md, round_trip=round_trip, context=context
+            path = Path(yaml_file)
+            result = cls.from_yaml(
+                f.read(),
+                from_parsed=from_parsed,
+                format_md=format_md,
+                md_formatter=md_formatter,
+                env=(env or {}) | {"base_path": path.parent},
+                round_trip=round_trip,
+                context=(context or {}) | {"base_path": path.parent},
             )
+            result._filename = path
+            return result
 
     @classmethod
     def from_json(
         cls,
         json_str: str,
-        format_md: bool = False,
+        from_parsed: bool | None = False,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
         context: dict | None = None,
     ):
-        return cls.from_python(
-            json.loads(json_str), format_md=format_md, context=context
+        """Loads the model from json string.
+
+        Arguments:
+            json_str (str): The json string.
+            from_parsed (bool|None): Whether to validate from parsed model.
+            format_md (bool|None): Whether to format MDstr fields during validation.
+            md_formatter (MarkdownIt|None): Markdown formatter to use.
+            env (dict|None): Env to be passed to the formatters `render` method.
+            context (dict|None): Additional context to be passed to the model_validate.
+        """
+        return cls.model_validate_json(
+            json_str,
+            context=cls.get_validation_context(
+                from_parsed=from_parsed,
+                format_md=format_md,
+                md_formatter=md_formatter,
+                env=env,
+                context=context,
+            ),
         )
 
     @classmethod
     def read_json(
         cls,
-        json_file,
-        format_md: bool = False,
+        json_file: os.PathLike,
+        from_parsed: bool | None = False,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
         context: dict | None = None,
     ):
+        """Loads the model from json string.
+
+        Arguments:
+            json_file (PathLike): The json file.
+            from_parsed (bool|None): Whether to validate from parsed model.
+            format_md (bool|None): Whether to format MDstr fields during validation.
+            md_formatter (MarkdownIt|None): Markdown formatter to use.
+            env (dict|None): Env to be passed to the formatters `render` method.
+            context (dict|None): Additional context to be passed to the model_validate.
+        """
         with open(json_file) as f:
-            content = json.load(f)
-        return cls.from_python(content, format_md=format_md, context=context)
+            path = Path(json_file)
+            result = cls.from_json(
+                json_str=f.read(),
+                from_parsed=from_parsed,
+                format_md=format_md,
+                md_formatter=md_formatter,
+                env=(env or {}) | {"base_path": path.parent},
+                context=(context or {}) | {"base_path": path.parent},
+            )
+            result._filename = path
+            return result
 
     to_file_or_str = staticmethod(to_file_or_str)
+
+    @classmethod
+    def get_serialization_context(
+        cls,
+        parsed: bool = False,
+        md_render_as: Literal["html", "md"] | None = None,
+        md_renderer: MarkdownIt | None = None,
+        env: dict | None = None,
+        context: dict | None = None,
+    ):
+        match md_render_as:
+            case "html":
+                renderer = md_renderer or cls.md_renderer
+            case "md":
+                renderer = md_renderer or cls.md_formatter
+            case None:
+                renderer = None
+        return (
+            (
+                {
+                    "md_renderer": renderer,
+                    "md_render_env": env,
+                }
+                if md_render_as
+                else {}
+            )
+            | {"parsed": parsed}
+            | (context or {})
+        )
 
     def to_python(
         self,
         *,
         parsed: bool = False,
-        rendered: bool = False,
-        format_md: bool = False,
-        renderer: MarkdownIt | None = None,
-        render_env: dict | None = None,
+        md_render_as: Literal["html", "md"] | None = None,
+        md_renderer: MarkdownIt | None = None,
+        env: dict | None = None,
         context: dict | None = None,
         **kwargs,
     ):
-        context = context or {}
         return self.model_dump(
-            context={
-                "parsed": parsed,
-                "rendered": rendered,
-                "renderer": renderer or self.mdit_renderer,
-                "format_md": format_md,
-                "render_env": render_env,
-            }
-            | context,
+            context=self.get_serialization_context(
+                parsed=parsed,
+                md_render_as=md_render_as,
+                md_renderer=md_renderer,
+                env=(env or {})
+                | {"base_path": self._filename and self._filename.parent},
+                context=(context or {})
+                | {"base_path": self._filename and self._filename.parent},
+            ),
             **kwargs,
         )
 
@@ -380,25 +568,24 @@ class DataViewModel(BaseModel):
         *,
         indent: int | None = 2,
         parsed: bool = False,
-        rendered: bool = False,
-        format_md: bool = False,
-        renderer: MarkdownIt | None = None,
-        render_env: dict | None = None,
+        md_render_as: Literal["html", "md"] | None = None,
+        md_renderer: MarkdownIt | None = None,
+        env: dict | None = None,
         context: dict | None = None,
         **kwargs,
     ):
-        context = context or {}
         return self.to_file_or_str(
             self.model_dump_json(
                 indent=indent,
-                context={
-                    "parsed": parsed,
-                    "rendered": rendered,
-                    "renderer": renderer or self.mdit_renderer,
-                    "format_md": format_md,
-                    "render_env": render_env,
-                }
-                | context,
+                context=self.get_serialization_context(
+                    parsed=parsed,
+                    md_render_as=md_render_as,
+                    md_renderer=md_renderer,
+                    env=(env or {})
+                    | {"base_path": self._filename and self._filename.parent},
+                    context=(context or {})
+                    | {"base_path": self._filename and self._filename.parent},
+                ),
                 **kwargs,
             ),
             file_name=file_name,
@@ -411,22 +598,25 @@ class DataViewModel(BaseModel):
         extension="yaml",
         *,
         parsed: bool = False,
-        rendered: bool = False,
-        format_md: bool = False,
-        renderer: MarkdownIt | None = None,
-        render_env: dict | None = None,
+        md_render_as: Literal["html", "md"] | None = None,
+        md_renderer: MarkdownIt | None = None,
+        env: dict | None = None,
+        context: dict | None = None,
         **kwargs,
     ):
         result = self.to_python(
-            parsed=parsed,
-            rendered=rendered,
-            format_md=format_md,
-            renderer=renderer,
-            render_env=render_env,
+            context=self.get_serialization_context(
+                parsed=parsed,
+                md_render_as=md_render_as,
+                md_renderer=md_renderer,
+                env=(env or {})
+                | {"base_path": self._filename and self._filename.parent},
+                context=(context or {})
+                | {"base_path": self._filename and self._filename.parent},
+            ),
             **kwargs,
         )
-        # merging is not possible during a parsed dump.
-        if self._yaml_content is not None and not parsed:
+        if self._yaml_content is not None:
             Merger(extend_lists=True, extend_dicts=True).merge(
                 self._yaml_content, result
             )
@@ -438,12 +628,18 @@ class DataViewModel(BaseModel):
         file_name: str | None = None,
         extension="md",
         *,
-        format: bool = False,
+        format: bool | None = False,
+        formatter: MarkdownIt | None = None,
+        env: dict | None = None,
         **kwargs,
     ):
         result = self.view_template.render(data=self, **kwargs)
         if format:
-            result = md_format(result)
+            result = (formatter or self.md_formatter).render(
+                result,
+                env=(env or {})
+                | {"base_path": self._filename and self._filename.parent},
+            )
         return self.to_file_or_str(
             result,
             file_name=file_name,
@@ -458,13 +654,17 @@ class DataViewModel(BaseModel):
         file_name: str | None = None,
         extension="html",
         *,
-        renderer: MarkdownIt | None = None,
-        render_env: dict | None = None,
+        md_renderer: MarkdownIt | None = None,
+        env: dict | None = None,
         **kwargs,
     ):
-        renderer = renderer or self.mdit_renderer
+        renderer = md_renderer or self.md_renderer
         return self.to_file_or_str(
-            renderer.render(self.to_md(format=False, **kwargs), env=render_env),
+            renderer.render(
+                self.to_md(format=False, **kwargs),
+                env=(env or {})
+                | {"base_path": self._filename and self._filename.parent},
+            ),
             file_name=file_name,
             extension=extension,
         )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 from collections import defaultdict
 from decimal import Decimal
+from pathlib import Path
 from typing import (
     Annotated,
     ClassVar,
@@ -17,6 +18,7 @@ import yaml
 from IPython.core.magic import Magics, cell_magic, magics_class
 from IPython.core.magic_arguments import magic_arguments
 from jinja2 import Template
+from markdown_it import MarkdownIt
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -40,20 +42,29 @@ from .queck_utils import (
     OverviewGroupStats,
     queck_config,
 )
-from .render_utils import html_export_templates, md_component_templates
+from .render_utils import (
+    COMPONENT_VIEW_TEMPLATES,
+    HTML_EXPORT_TEMPLATES,
+    MDIT_MD_RENDERERS,
+)
 from .utils import get_literal_union_args
 
 
 @runtime_checkable
 class MarkedItem(Protocol):
+    """A protocol for items that have marks."""
+
     marks: DecimalNumber | None
 
 
 class QuestionContainer[T](abc.ABC):
+    """An abstract base class for containers of questions."""
+
     questions: Sequence[T]
 
     @property
     def marks(self):
+        """The total marks of all questions in the container."""
         return sum(
             (
                 question.marks or Decimal()
@@ -65,6 +76,8 @@ class QuestionContainer[T](abc.ABC):
 
 
 class QueckItemTypes:
+    """Literals for the different types of queck items."""
+
     description = Literal["description"]
     question = Literal["question"]
     common_data_question = Literal["common_data_question"]
@@ -79,8 +92,8 @@ type QueckItemType = (
 
 class QueckItemModel(abc.ABC, DataViewModel):
     type: str
-    model_config = ConfigDict(extra="forbid")
     text: MDStr
+    model_config = ConfigDict(extra="ignore")
 
     def to_md(
         self,
@@ -91,6 +104,19 @@ class QueckItemModel(abc.ABC, DataViewModel):
         type_labels: dict[str, str] | None = None,
         **kwargs,
     ):
+        """Exports the QueckItem object to a markdown file.
+
+        Args:
+            file_name (str, optional):
+                The name of the file to export to.
+                If not provided, the markdown string is returned.
+            extension (str): The extension of the file.
+            format (bool): Whether to format the markdown.
+            type_labels (dict[str, str], optional):
+                A dictionary of type labels to use.
+                If not provided, the default type labels are used.
+            **kwargs: Additional keyword arguments to pass to the template.
+        """
         type_labels = queck_config.type_labels | (type_labels or {})
         return super().to_md(
             file_name, extension, format=format, type_labels=type_labels or {}, **kwargs
@@ -98,7 +124,9 @@ class QueckItemModel(abc.ABC, DataViewModel):
 
 
 class Description(QueckItemModel):
-    view_template: ClassVar[Template] = md_component_templates["question"]
+    """A description item in a queck."""
+
+    view_template: ClassVar[Template] = COMPONENT_VIEW_TEMPLATES["question"]
     type: QueckItemTypes.description = "description"
     text: MDStr = Field(
         title="Description",
@@ -127,7 +155,7 @@ class Question(QueckItemModel):
     """  # noqa: E501
 
     type: QueckItemTypes.question = "question"
-    view_template: ClassVar[Template] = md_component_templates["question"]
+    view_template: ClassVar[Template] = COMPONENT_VIEW_TEMPLATES["question"]
 
     text: MDStr = Field(
         title="Question",
@@ -136,7 +164,7 @@ class Question(QueckItemModel):
     )
     answer: Answer
     feedback: MDStr | None = Field(
-        default="",
+        default=None,
         description="Optional feedback or explanation for the question. "
         "Can include solutions, hints, or clarifications.",
     )
@@ -151,6 +179,8 @@ class Question(QueckItemModel):
 
 
 class QueckQuestionContainer[T](QuestionContainer[T], BaseModel):
+    """A container for a sequence of questions."""
+
     questions: Sequence[T]
 
     @staticmethod
@@ -217,7 +247,7 @@ class QueckQuestionContainer[T](QuestionContainer[T], BaseModel):
         return question_container
 
 
-class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
+class CommonDataQuestion(QueckQuestionContainer, QueckItemModel):
     """Represents a set of questions that share a common context or data.
 
     Attributes:
@@ -225,7 +255,7 @@ class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
         - `questions`: A list of questions based on the common context.
     """
 
-    view_template: ClassVar[Template] = md_component_templates["common_data_question"]
+    view_template: ClassVar[Template] = COMPONENT_VIEW_TEMPLATES["common_data_question"]
     type: QueckItemTypes.common_data_question = "common_data_question"
     text: MDStr = Field(
         title="CommonData",
@@ -238,12 +268,21 @@ class CommonDataQuestion(QueckItemModel, QueckQuestionContainer):
     )
 
 
-OutputFormat = Literal["queck", "html", "md", "json"]
+OutputFormat = Literal["queck", "qknb", "html", "md", "json"]
 
 QueckItem = Description | Question | CommonDataQuestion
 
 
-class Queck(DataViewModel, QueckQuestionContainer):
+# Fix to make sure that the order of fields is correct
+class QueckBase(BaseModel):
+    """Base model for a queck."""
+
+    type: Literal["queck"] = "queck"
+    title: str
+    questions: Sequence
+
+
+class Queck(QueckQuestionContainer, QueckBase, DataViewModel):
     """A set of questions or Quecks with a title.
 
     Contains a title and questions.
@@ -256,12 +295,15 @@ class Queck(DataViewModel, QueckQuestionContainer):
     """
 
     type: Literal["queck"] = "queck"
-    view_template: ClassVar[Template] = md_component_templates["queck"]
+    view_template: ClassVar[Template] = COMPONENT_VIEW_TEMPLATES["queck"]
     title: str = Field(description="The title of the queck.")
     questions: Sequence[QueckItem] | Sequence[Queck] = Field(
         description="A collection of questions, "
         "which may include standalone questions or common-data questions.",
     )
+
+    # To allow some application specific extra configs
+    model_config = ConfigDict(extra="allow")
 
     @staticmethod
     def _overview(
@@ -330,18 +372,46 @@ class Queck(DataViewModel, QueckQuestionContainer):
                 return overview_list
 
     def overview(self, type_labels: dict[str, str] | None = None):
+        """Generates an overview of the queck.
+
+        Args:
+            type_labels (dict[str, str], optional):
+                A dictionary of type labels to use.
+                If not provided, the default type labels are used.
+
+        Returns:
+            list: A list of overview statistics.
+        """
         return self._overview(self, type_labels=type_labels or queck_config.type_labels)
 
     @classmethod
-    def from_queck(cls, queck_str: str, format_md: bool = False, round_trip=False):
+    def from_queck(
+        cls,
+        queck_str: str,
+        ignore_choice_issues: bool = False,
+        round_trip=False,
+        format_md: bool = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
+    ):
         """Loads and validates the queck YAML string.
 
         Args:
-            queck_str(str): the queck YAML string.
-            format_md(bool): Format the MDStr fields using mdformat.
+            queck_str (str): the queck YAML string.
+            format_md (bool): Whether to format the MDStr fields using the formatter.
+            md_formatter (MarkdownIt|None):
+                The Formatter to use. If not provided the default formatter is used.
+                Has no effect if format_md is False.
+            env (dict|None):
+                Env to be passed to the render method of the formatter.
+                Has no effect if format_md is False.
             round_trip (bool):
                 Whether to enable round trip parsing, preserving comments.
                 If enabled ruamel parser is used, else pyyaml is used.
+            ignore_choice_issues (bool):
+                Whether to ignore choice based issues such as
+                    1. Missing answer
+                    2. All correct answers
 
         Returns:
             Queck: Validated Queck object if successful.
@@ -350,19 +420,42 @@ class Queck(DataViewModel, QueckQuestionContainer):
             ValidationError: if validation is not successfull
         """
         return cls.from_yaml(
-            yaml_str=queck_str, format_md=format_md, round_trip=round_trip
+            yaml_str=queck_str,
+            round_trip=round_trip,
+            format_md=format_md,
+            md_formatter=md_formatter,
+            env=env,
+            context={"ignore_n_correct": ignore_choice_issues},
         )
 
     @classmethod
-    def read_queck(cls, queck_file, format_md: bool = False, round_trip=False):
+    def read_queck(
+        cls,
+        queck_file,
+        ignore_choice_issues: bool = False,
+        round_trip=False,
+        format_md: bool = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
+    ):
         """Loads and validates the queck YAML file.
 
         Args:
             queck_file (str): Path to the queck YAML file.
-            format_md(bool): Format the MDStr fields using mdformat.
+            ignore_choice_issues (bool):
+                Whether to ignore choice based issues such as
+                    1. Missing answer
+                    2. All correct answers
             round_trip (bool):
                 Whether to enable round trip parsing, preserving comments.
                 If enabled ruamel parser is used, else pyyaml is used.
+            format_md (bool): Whether to format the MDStr fields using the formatter.
+            md_formatter (MarkdownIt|None):
+                The Formatter to use. If not provided the default formatter is used.
+                Has no effect if format_md is False.
+            env (dict|None):
+                Env to be passed to the render method of the formatter.
+                Has no effect if format_md is False.
 
         Returns:
             Queck: Validated Queck object if successful.
@@ -370,45 +463,112 @@ class Queck(DataViewModel, QueckQuestionContainer):
         Raises:
             ValidationError: if validation is not successfull
         """
-        return cls.read_yaml(
-            yaml_file=queck_file, format_md=format_md, round_trip=round_trip
+        result = cls.read_yaml(
+            yaml_file=queck_file,
+            round_trip=round_trip,
+            format_md=format_md,
+            md_formatter=md_formatter,
+            env=env,
+            context={"ignore_n_correct": ignore_choice_issues},
         )
+        result._filename = Path(queck_file)
+        return result
 
-    def to_queck(self, file_name: str | None = None):
+    def to_queck(
+        self,
+        file_name: str | None = None,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
+    ):
+        """Exports the Queck object to a queck file.
+
+        Args:
+            file_name (str, optional):
+                The name of the file to export to.
+                If not provided, the queck string is returned.
+            format_md (bool): Whether to format the MDStr fields using the formatter.
+            md_formatter (MarkdownIt|None):
+                The Formatter to use. If not provided the default formatter is used.
+                Has no effect if format_md is False.
+            env (dict|None):
+                Env to be passed to the render method of the formatter.
+                Has no effect if format_md is False.
+        """
         return self.to_yaml(
             file_name=file_name,
             extension="qk",
+            md_render_as="md" if format_md else None,
+            md_renderer=md_formatter,
+            env=env,
             exclude_defaults=True,
             exclude_none=True,
             exclude_unset=True,
         )
 
-    def to_json(
-        self,
-        file_name=None,
-        extension="json",
-        *,
-        parsed=False,
-        rendered=False,
-        format_md=False,
-        renderer=None,
-        render_env=None,
-        **kwargs,
+    @classmethod
+    def read_notebook(
+        cls,
+        filename,
+        format_md: bool | None = False,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
     ):
-        if parsed:
-            extension = "json"
-        else:
-            extension = "qk.json"
+        """Loads a queck from a Queck notebook (.qknb).
 
-        return super().to_json(
-            file_name,
-            extension,
-            parsed=parsed,
-            rendered=rendered,
+        Args:
+            filename (str): The path to the notebook file.
+            format_md (bool): Whether to format the MDStr fields using the formatter.
+            md_formatter (MarkdownIt|None):
+                The Formatter to use. If not provided the default formatter is used.
+                Has no effect if format_md is False.
+            env (dict|None):
+                Env to be passed to the render method of the formatter.
+                Has no effect if format_md is False.
+        """
+        return cls.read_json(
+            filename,
+            from_parsed=True,
             format_md=format_md,
-            renderer=renderer,
-            render_env=render_env,
-            **kwargs,
+            md_formatter=md_formatter,
+            env=env,
+            context={"ignore_n_correct": True},
+        )
+
+    def to_notebook(
+        self,
+        file_name: str | None = None,
+        md_formatter: MarkdownIt | None = None,
+        env: dict | None = None,
+    ):
+        """Exports the Queck object to a Queck notebook(.qknb).
+
+        Queck Notebooks are self contained quecks in json based parsed format
+        with all images and other linked resources embedded.
+
+        Uses render_utils.MDIT_MD_RENDERERS['embedded'] formatter by default.
+
+        Args:
+            file_name (str, optional):
+                The name of the file to export to.
+                If not provided, the notebook string is returned.
+            md_formatter (MarkdownIt|None):
+                The Formatter to use. If not provided the default formatter is used.
+                Has no effect if format_md is False.
+            env (dict|None):
+                Env to be passed to the render method of the formatter.
+                Has no effect if format_md is False.
+        """
+        return self.to_json(
+            file_name=file_name,
+            extension="qknb",
+            parsed=True,
+            md_render_as="md",
+            md_renderer=md_formatter or MDIT_MD_RENDERERS["embedded"],
+            env=env,
+            exclude_none=True,
+            exclude_unset=True,
+            exclude_defaults=True,
         )
 
     def to_md(
@@ -417,6 +577,7 @@ class Queck(DataViewModel, QueckQuestionContainer):
         extension="md",
         *,
         format=False,
+        formatter: MarkdownIt | None = None,
         type_labels: dict[str, str] | None = None,
         overview: bool = False,
         **kwargs,
@@ -427,6 +588,7 @@ class Queck(DataViewModel, QueckQuestionContainer):
             file_name,
             extension,
             format=format,
+            formatter=formatter,
             type_labels=type_labels,
             overview=overview and self.overview(type_labels=type_labels),
             **kwargs,
@@ -435,18 +597,31 @@ class Queck(DataViewModel, QueckQuestionContainer):
     def export_html(
         self,
         file_name: str | None = None,
-        render_mode: Literal["fast", "latex", "inline"] = "fast",
+        template: Literal["fast", "latex", "inline"] = "fast",
         type_labels: dict[str, str] | None = None,
         overview=False,
     ):
+        """Exports the Queck object to an HTML file.
+
+        Args:
+            file_name (str, optional):
+                The name of the file to export to.
+                If not provided, the HTML string is returned.
+            template (Literal["fast", "latex", "inline"]):
+                The rendering template to use. Defaults to "fast".
+            type_labels (dict[str, str], optional):
+                A dictionary of type labels to use.
+                If not provided, the default type labels are used.
+            overview (bool): Whether to include an overview of the queck.
+        """
         type_labels = queck_config.type_labels | (type_labels or {})
-        assert render_mode in [
+        assert template in [
             "fast",
             "latex",
             "inline",
-        ], 'render_mode must be one of "fast", "latex" or "inline"'
+        ], 'template must be one of "fast", "latex" or "inline"'
         return self.to_file_or_str(
-            html_export_templates[render_mode].render(
+            HTML_EXPORT_TEMPLATES[template].render(
                 data=self.normalize_answers(bool_to_choice=True, copy=True),
                 overview=overview and self.overview(type_labels=type_labels),
                 type_labels=type_labels,
@@ -459,10 +634,10 @@ class Queck(DataViewModel, QueckQuestionContainer):
         self,
         output_file: str | None = None,
         format: OutputFormat = "html",
-        render_mode: Literal["fast", "latex", "inline"] = "fast",
+        template: Literal["fast", "latex", "inline"] = "fast",
         overview: bool = False,
         parsed: bool = False,
-        render_json: bool = False,
+        md_render_as: Literal["html", "md"] | None = None,
         **kwargs,
     ):
         """Export queck (YAML) files into the specified .
@@ -470,24 +645,27 @@ class Queck(DataViewModel, QueckQuestionContainer):
         Args:
             output_file (str) : Output file name
             format (OutputFormat): Output format
-            render_mode : Rendering mode
+            template (Literal["fast", "latex", "inline"]):
+                Export template to be used.
             overview (bool): Whether to add overview section
             parsed (bool): Whether to add parsed choices
-            render_json (bool): Whether to render markdown to html in json
+            md_render_as (bool): Whether to render markdown to html/md in json
             kwargs : Passed to model_dump
         """
-        q = self
-
         q = self.normalize_answers(**queck_config.normalize_config, copy=True)
         match format:
             case "queck":
-                q.to_queck(output_file)
+                q.to_queck(output_file, md_render_as="")
+            case "qknb":
+                q.to_notebook(output_file)
             case "html":
-                q.export_html(output_file, render_mode=render_mode, overview=overview)
+                q.export_html(output_file, template=template, overview=overview)
             case "md":
                 q.to_md(output_file, format=True, overview=overview, **kwargs)
             case "json":
-                q.to_json(output_file, rendered=render_json, parsed=parsed, **kwargs)
+                q.to_json(
+                    output_file, md_render_as=md_render_as, parsed=parsed, **kwargs
+                )
         print(f"Quiz successfully exported to {output_file}")
 
 
@@ -496,7 +674,10 @@ QueckAnyAdapter: TypeAdapter = TypeAdapter(QueckItem | Queck)
 
 @magics_class
 class QueckMagic(Magics):
+    """A magic class for running queck cells in IPython."""
+
     @magic_arguments()
     @cell_magic
     def queck(self, line, cell):
+        """A cell magic for creating a Queck Item or a Queck from a YAML string."""
         return QueckAnyAdapter.validate_python(yaml.safe_load(cell))
