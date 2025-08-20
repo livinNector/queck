@@ -26,9 +26,12 @@ def img_src_to_base64(src: str, base_path: str):
 
 def image_embed_plugin(md: MarkdownIt):
     def embed_images(state: StateCore, *args):
-        images: list[ImageInfo] = state.env.get("images")
+        images: list[ImageInfo] = state.env.get("images", [])
         for image in images:
             if image.type == "path":
+                image.alt = (image.alt and image.alt.strip()) or (
+                    image.src and image.src.strip()
+                )
                 image.src = img_src_to_base64(
                     image.src,
                     state.env.get("base_path")

@@ -30,6 +30,10 @@ class ImageInfo:
     def alt(self):
         return self.token.children and self.token.children[0].content
 
+    @alt.setter
+    def alt(self, value):
+        self.token.children = [Token(type="text", tag="", nesting=0, content=value)]
+
 
 def extract_image_info(token: "Token") -> ImageInfo:
     src = token.attrGet("src")
