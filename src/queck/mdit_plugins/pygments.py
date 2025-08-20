@@ -1,3 +1,5 @@
+import re
+
 import css_inline
 from markdown_it import MarkdownIt
 from pygments import highlight
@@ -57,7 +59,9 @@ def pygments_plugin(
 
     def render_code_block(self, tokens, idx, options, env):
         token = tokens[idx]
-        content = token.content.strip()
+
+        # striping leading empty lines and trailing whitespaces.
+        content = re.sub(r"\A(?:\s*\n)+", "", token.content).rstrip()
         language = token.info.strip() if token.info else "text"
         try:
             lexer = get_lexer_by_name(language)
