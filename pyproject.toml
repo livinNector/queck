@@ -1,7 +1,7 @@
 
 [project]
 name = "queck"
-version = "2.1.0"
+version = "2.1.1"
 description = "A quiz authoring format and tool with different export formats."
 readme = "README.md"
 authors = [{ name = "Livin Nector", email = "livinnector2001@gmail.com" }]
@@ -44,7 +44,7 @@ build-backend = "setuptools.build_meta"
 
 
 [tool.bumpversion]
-current_version = "2.1.0"
+current_version = "2.1.1"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
