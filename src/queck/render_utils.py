@@ -57,8 +57,8 @@ def pygments_plugin(md):
 def css_inline_plugin(md, css=""):
     render = md.render
 
-    def inline_css(x):
-        out = f"<main>{render(x)}</main>"
+    def inline_css(x, env=None):
+        out = f"<main>{render(x,env=env)}</main>"
         return css_inline.inline_fragment(out, css=css)
 
     md.render = inline_css
